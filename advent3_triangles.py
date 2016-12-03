@@ -27,11 +27,24 @@ _KNOWN_FALSE = ((1, 2, 3), (5, 10, 25))
 def evaluate(triples):
     return [1 if is_triangle(t) else 0 for t in triples]
 
-def main(args):
+def parse_triples_every_3(sidelengths):
     triples = []
-    for i in xrange(0, len(args.sidelengths), 3):
-        triple = args.sidelengths[i+0], args.sidelengths[i+1], args.sidelengths[i+2]
-        triples.append(tuple([int(s) for s in triple]))
+    for i in xrange(0, len(sidelengths), 3):
+        triples.append([sidelengths[i+j] for j in xrange(0, 3)])
+    return triples
+    
+def parse_triples_every_third(sidelengths):
+    triples = []
+    for i in xrange(0, len(sidelengths), 9):
+        for j in xrange(0, 3):
+            triples.append([sidelengths[i + j + k * 3] for k in xrange(0, 3)])
+    return triples
+    
+def main(args):
+    if args.parse_mode == 'rows':
+        triples = parse_triples_every_3(map(int, args.sidelengths))
+    else:
+        triples = parse_triples_every_third(map(int, args.sidelengths))
     evaluations = evaluate(triples)
     if args.verbose:
         print >> sys.stderr, "evaluated", len(triples), "triples:", triples
@@ -43,6 +56,7 @@ if __name__ == '__main__':
     assert sum(evaluate(_KNOWN_FALSE)) == 0
     from argparse import ArgumentParser
     p = ArgumentParser()
+    p.add_argument("parse_mode", choices=('rows', 'cols'), help="how triples are oriented in the input")
     p.add_argument("sidelengths", nargs="*", help="side lengths, every 3 of which are interpreted as a possible triangle; leave empty to read from stdin", default=[])
     p.add_argument("--verbose", default=False, action="store_true")
     args = p.parse_args()
