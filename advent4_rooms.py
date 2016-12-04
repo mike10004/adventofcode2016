@@ -58,7 +58,7 @@ def main(args):
     room_codes = input_text.split()
     rooms = map(parse_room, room_codes)
     real_rooms = filter(lambda room: room.check_real(), rooms)
-    sector_sum = sum([room.sector for room in rooms])
+    sector_sum = sum([room.sector for room in real_rooms])
     print "%d is sum of sector IDs of %d real rooms out of %d codes" % (sector_sum, len(real_rooms), len(rooms))
     return 0
 
