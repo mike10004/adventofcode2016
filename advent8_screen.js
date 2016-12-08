@@ -53,12 +53,25 @@ causing the bottom pixel to wrap back to the top:
 #.#....
 .#.....
 As you can see, this display technology is extremely powerful, and will soon 
-dominate the tiny-code-displaying-screen market. That's what the advertisement on the back of the display tries to convince you, anyway.
+dominate the tiny-code-displaying-screen market. That's what the advertisement 
+on the back of the display tries to convince you, anyway.
 
 There seems to be an intermediate check of the voltage used by the display: 
 after you swipe your card, if the screen did work, how many pixels should 
 be lit?
-********************************************************************************************/
+
+Answer: 121
+
+--- Part Two ---
+
+You notice that the screen is only capable of displaying capital letters; in
+the font it uses, each letter is 5 pixels wide and 6 tall.
+
+After you swipe your card, what code is the screen trying to display?
+
+Answer: RURUCEOEIL
+
+*****************************************************************************/
 
 var assert = require('assert');
 var testCases = [
@@ -248,7 +261,7 @@ testCases.forEach(testCase => {
     } else {
       consumed = true;
       var commands = chunk.split(/[\n\r]/).filter(s => s.length > 0);
-      var result = run(50, 6, commands, console.error);
+      var result = run(50, 6, commands, ()=>false);
       console.log(result);
       var numOn = result.split('').filter(c => c === '#').length;
       console.log(numOn + " cells are 'on'");
