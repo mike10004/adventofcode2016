@@ -60,28 +60,88 @@ after you swipe your card, if the screen did work, how many pixels should
 be lit?
 ********************************************************************************************/
 
-var sampleCommands = ['rect 3x2', 
-'rotate column x=1 by 1', 
-'rotate row y=0 by 4', 
-'rotate row x=1 by 1'];
+var assert = require('assert');
+var testCases = [
+    {
+        width: 7,
+        height: 3,
+        commands: [
+            'rect 3x2', 
+            'rotate column x=1 by 1', 
+            'rotate row y=0 by 4', 
+            'rotate row x=1 by 1'
+        ],
+        screen: '.#..#.#\n#.#....\n.#.....\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate column x=0 by 1'],
+        screen: '..\n#.\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate row y=0 by 1'],
+        screen: '.#\n..\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate column x=0 by 2'],
+        screen: '#.\n..\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate row y=0 by 2'],
+        screen: '#.\n..\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate column x=0 by 3'],
+        screen: '..\n#.\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate row y=0 by 3'],
+        screen: '.#\n..\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate column x=0 by 1', 'rotate row y=1 by 1'],
+        screen: '..\n.#\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate column x=0 by 1', 'rotate row y=1 by 1', 'rect 1x1'],
+        screen: '#.\n.#\n'
+    },
+    {
+        width: 2, height: 2,
+        commands: ['rect 1x1', 'rotate column x=0 by 1', 'rotate row y=1 by 1', 'rect 1x1', 'rotate column x=1 by 1'],
+        screen: '##\n..\n'
+    }
+];
 
-(function(W, H, commands, log){
+function run(W, H, commands, log) {
     
     var ON = '#', OFF = '.';
 
-    function row() {
-        var r = new Array(W);
-        for (var i = 0; i < W; i++) {
-            r[i] = OFF;
-        }
-        return r;
-    }
-    
     function Screen(W, H) {
         
-        var rows = [];
-        for (var col = 0; col < H; col++) {
-            rows.push(row());
+        var rows = createArray(H, () => createArray(W, OFF));
+
+        var checkDimensions = function(source) {
+            assert.equal(H, rows.length);
+            rows.forEach((row, i) => {
+                assert.equal(W, row.length, 'row length incorrect from ' + source)
+                assert.equal(W, row.filter(c => c === OFF || c === ON).length, "row " + i + " has illegal character; from " + source);
+            });
+        };
+
+        function createArray(length, fill) {
+            var r = new Array(length);
+            for (var i = 0; i < length; i++) {
+                r[i] = typeof(fill) === 'function' ? fill() : fill;
+            }
+            return r;
         }
 
         this.rect = function(A, B) {
@@ -95,25 +155,23 @@ var sampleCommands = ['rect 3x2',
 
         this.rotateRow = function(A, B) {
             log('rotateRow', A, B);
+            assert(B >= 0, "rotation magnitude must be nonnegative");
+            B = B % W;
             var chunk = rows[A].splice(W - B, B);
             rows[A] = chunk.concat(rows[A]);
         };
 
         this.rotateColumn = function(A, B) {
             log('rotateColumn', A, B);
+            assert(B >= 0, "rotation magnitude must be nonnegative");
+            B = B % H;
             var chunk = [];
-            for (var row = H - B; row < H; row++) {
-                chunk.push(rows[row][A]);
-            }
-            for (var row = 0; row < B; row++) {
-                chunk.push(rows[row][A]);
-            }
-            for (var row = 0; row < H; row++) {
-                rows[row][A] = chunk[row];
-            }
+            rows.filter((row, i) => i >= H - B).forEach((row, i) => chunk.push(row[A]));
+            rows.filter((row, i) => i < H - B).forEach((row, i) => chunk.push(row[A]));
+            chunk.forEach((value, i) => rows[i][A] = value);
         }
         
-        function Handler(regex, fn) {
+        function Handler(regex, fn, name) {
             this.invoke = function(command) {
                 var args = regex.exec(command);
                 if (args) {
@@ -122,29 +180,31 @@ var sampleCommands = ['rect 3x2',
                 }
             }
 
-            this.toString = function() {
-                return "Handler{" + regex + "}";
-            }
+            this.name = name;
         }
+        
         var me = this;
+        
         var rotators = {
-                    'x': me.rotateColumn,
-                    'y': me.rotateRow
-                };
+            'x': this.rotateColumn,
+            'y': this.rotateRow
+        };
+
         var handlers = [
             new Handler(/rect (\d+)x(\d+)/, function(groups){
                 var A = parseInt(groups[1], 10), B = parseInt(groups[2], 10);
                 me.rect(A, B);
-            }),
+            }, 'RectHandler'),
             new Handler(/rotate \w+ ([xy])=(\d+) by (\d+)/, function(groups){
                 var A = parseInt(groups[2], 10), B = parseInt(groups[3], 10);
                 rotators[groups[1]](A, B);
-            })
+            }, 'RotateHandler')
         ];
-        // /rotate \w+ ([xy])=(\d+) by (\d+)/.exec('rotate column x=1 by 1')
+        
         this.perform = function(command) {
             for (var i in handlers) {
                 if (handlers[i].invoke(command)) {
+                    checkDimensions(handlers[i].name);
                     return;
                 }
             }
@@ -153,8 +213,10 @@ var sampleCommands = ['rect 3x2',
 
         this.draw = function() {
             var drawing = '';
-            rows.forEach(function(row){
-                drawing = drawing + row.join('');
+            rows.forEach(function(row, i){
+                var rowStr = row.map(c => c || 'X').join('');
+                assert.equal(W, rowStr.length, "row " + i + " has length " + rowStr.length + " instead of " + W);
+                drawing = drawing + rowStr;
                 drawing += '\n';
             });
             return drawing;
@@ -164,6 +226,32 @@ var sampleCommands = ['rect 3x2',
     var screen = new Screen(W, H);
     log("processing " + commands.length + " commands");
     commands.forEach(screen.perform);
-    console.log(screen.draw());
-})(50, 6, sampleCommands, console.error);
+    var result = screen.draw();
+    return result;
+};
 
+testCases.forEach(testCase => {
+    var result = run(testCase.width, testCase.height, testCase.commands, () => false);
+    assert.equal(testCase.screen, result, "after commands " + testCase.commands + ", expected screen:\n" + testCase.screen + "\n but got " + result);
+});
+
+(function(){
+  process.stdin.setEncoding('utf8');
+  var consumed = false;
+  process.stdin.on('readable', () => {
+    var chunk = process.stdin.read();
+    if (chunk == null) {
+      if (!consumed) {
+        console.error("no data on stdin");
+      }
+      process.exit(consumed ? 0 : 1);
+    } else {
+      consumed = true;
+      var commands = chunk.split(/[\n\r]/).filter(s => s.length > 0);
+      var result = run(50, 6, commands, console.error);
+      console.log(result);
+      var numOn = result.split('').filter(c => c === '#').length;
+      console.log(numOn + " cells are 'on'");
+    }
+  });
+})();
