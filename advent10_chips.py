@@ -165,7 +165,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     p = ArgumentParser()
     p.add_argument("--verbose", action="store_true", default=False)
-    p.add_argument("--find-move", type=int, nargs=2, help="find the move that compared chips with given IDs")
+    p.add_argument("--find-move", metavar="ID", type=int, nargs=2, help="find the move that compared chips with given IDs")
     p.add_argument("--product", nargs='+', help="compute product of output bins", metavar="BIN")
     args = p.parse_args()
     sys.exit(main(args))
