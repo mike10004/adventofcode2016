@@ -6,6 +6,7 @@
 
 import re
 import sys
+import operator 
 
 class Tracker:
 
@@ -27,6 +28,7 @@ class ChipHolder:
         self.chips = []
 
     def accept(self, chip):
+        assert isinstance(chip, basestring), "expect chip to be string, but %s is %s" % (str(chip), str(type(chip)))
         self.chips.append(chip)
 
     def __str__(self):
@@ -35,16 +37,20 @@ class ChipHolder:
 class Bin(ChipHolder):
     pass
 
+class NotReadyError(Exception):
+    pass
+
 class Bot(ChipHolder):
 
     def ready(self):
         return len(self.chips) == 2
 
     def compare(self, comparator):
-        assert self.ready()
+        if not self.ready():
+            raise NotReadyError("Bot %s does not have 2 chips to compare: %s" % (self.tag, str(self.chips)))
         a, b = map(int, self.chips)
         _TRACKER.track(self.tag, a, b)
-        return a if comparator(a, b) else b
+        return str(a) if comparator(a, b) else str(b)
 
     def low(self):
         return self.compare(_LT)
@@ -52,18 +58,13 @@ class Bot(ChipHolder):
     def high(self):
         return self.compare(_GT)
 
-    def give_low(self, holder):
-        holder.accept(self.low())
-    
-    def give_high(self, holder):
-        holder.accept(self.high())
-
-# value 5 goes to bot 2
-# bot 2 gives low to bot 1 and high to bot 0
-# value 3 goes to bot 1
-# bot 1 gives low to output 1 and high to bot 0
-# bot 0 gives low to output 2 and high to output 0
-# value 2 goes to bot 2
+    def give(self, chip, holder):
+        try:
+            self.chips.remove(chip)
+        except ValueError:
+            print >> sys.stderr, "bot %s cannot give chip %s: chips=%s" % (self.tag, chip, self.chips)
+            raise
+        holder.accept(chip)
 
 class Parser:
 
@@ -77,7 +78,7 @@ class Parser:
         m = self.pattern.match(instruction)
         if m is not None:
             g = [m.group(0)] + list(m.groups())
-            self.act(g, holders)
+            return self.act(g, holders)
 
 class AssignmentParser(Parser):
 
@@ -96,8 +97,12 @@ class ActionParser(Parser):
     def act(self, g, holders):
         assert len(g) == 6
         bot = holders['bot'][g[1]]
-        bot.give_low(holders[g[2]][g[3]])
-        bot.give_high(holders[g[4]][g[5]])
+        if bot.ready():
+            low, high = bot.low(), bot.high()
+            bot.give(low, holders[g[2]][g[3]])
+            bot.give(high, holders[g[4]][g[5]])
+            return True
+        return False
 
 class HolderDict:
 
@@ -125,13 +130,42 @@ def main(args):
     for inst in instructions:
         assp.process(inst, holders)
     actp = ActionParser()
-    for inst in instructions:
-        actp.process(inst, holders)
+    for bot in bots.values():
+        if args.verbose: 
+            print 'bot:', bot
+    num_moves = None
+    num_rounds = 0
+    while num_moves is None or num_moves > 0:
+        num_moves = 0
+        for inst in instructions:
+            if actp.process(inst, holders):
+                num_moves += 1
+        num_rounds += 1
+        if args.verbose: 
+            print num_moves, 'in round', num_rounds
     for output in bins.values():
-        print 'output:', output
+        if args.verbose: 
+            print 'output:', output
     for move in set(_TRACKER.moves):
-        print 'move:', move
+        if args.verbose: 
+            print 'move:', move
+    if args.find_move is not None:
+        a, b = args.find_move
+        for tag, x, y in set(_TRACKER.moves):
+            if (x == a and y == b) or (x == b and y == a):
+                print "found:", (tag, x, y)
+    if args.product is not None:
+        targets = [bins[b] for b in args.product]
+        subproducts = [reduce(operator.mul, map(int, b.chips), 1) for b in targets]
+        product = reduce(operator.mul, subproducts, 1)
+        print 'product of', args.product, '=', product
     return 0
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    from argparse import ArgumentParser
+    p = ArgumentParser()
+    p.add_argument("--verbose", action="store_true", default=False)
+    p.add_argument("--find-move", type=int, nargs=2, help="find the move that compared chips with given IDs")
+    p.add_argument("--product", nargs='+', help="compute product of output bins", metavar="BIN")
+    args = p.parse_args()
+    sys.exit(main(args))
