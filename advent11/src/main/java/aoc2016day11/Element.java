@@ -4,11 +4,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by mike on 12/11/16.
- */
 enum Element {
-    hydrogen, lithium, promethium, ruthenium, strontium, thulium;
+    hydrogen, lithium, plutonium, promethium, ruthenium, strontium, thulium;
     public static List<Element> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
     public final String symbol;
 

@@ -1,10 +1,7 @@
 package aoc2016day11;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -72,8 +69,13 @@ public class Item {
         return kind == Kind.generator;
     }
 
+
     public static boolean areSafe(Stream<Item> items) {
         List<Item> itemList = items.collect(Collectors.toList());
+        return areSafe(itemList);
+    }
+
+    public static boolean areSafe(List<Item> itemList) {
         for (int i = 0; i < itemList.size(); i++) {
             Item item = itemList.get(i);
             Stream<Item> others = itemList.stream().filter(Predicate.isEqual(item).negate());
@@ -107,5 +109,27 @@ public class Item {
             return itemList.stream().filter(Item::isGenerator).anyMatch(g -> g.element == element)
                 || itemList.stream().filter(Item::isGenerator).noneMatch(g -> g.element != element);
         }
+    }
+
+    /**
+     * Returns all unique pairings of the items in the given list. Every
+     * list in the returned stream has length 2.
+     * @return all pairs of the given items
+     */
+    public static Stream<List<Item>> pairs(List<Item> all) {
+        if (all.size() < 2) {
+            return Stream.empty();
+        }
+        List<Item> copy = new ArrayList<>(all);
+        if (all.size() == 2) {
+            return Stream.of(copy);
+        }
+        List<List<Item>> pairs = new ArrayList<>();
+        for (int i = 0; i < copy.size(); i++) {
+            for (int j = i + 1; j < copy.size(); j++) {
+                pairs.add(Arrays.asList(copy.get(i), copy.get(j)));
+            }
+        }
+        return pairs.stream();
     }
 }

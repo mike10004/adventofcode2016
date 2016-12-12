@@ -5,6 +5,7 @@ import java.io.PrintStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Building {
@@ -12,7 +13,7 @@ public class Building {
     public static final AtomicLong counter = new AtomicLong(0L);
     private final int elevatorPosition;
     public final List<Floor> floors;
-    public final int numMoves;
+    public final transient int numMoves;
 
     Building(int elevatorPosition, List<Floor> floors) {
         this(elevatorPosition, floors, 0);
@@ -27,7 +28,7 @@ public class Building {
         counter.incrementAndGet();
     }
 
-    public Building onFirstFloor(List<Floor> floors) {
+    public static Building onFirstFloor(List<Floor> floors) {
         return new Building(0, floors);
     }
 
@@ -77,11 +78,11 @@ public class Building {
     }
 
 
-    public @Nullable Building moveElevator(Direction direction, List<Item> items) {
+    public @Nullable Building moveElevator(Direction direction, Collection<Item> items) {
         return move(direction, items).building;
     }
 
-    Building moveChecked(Direction direction, List<Item> items) {
+    Building moveChecked(Direction direction, Collection<Item> items) {
         MoveResult result = move(direction, items);
         if (!result.isValid()) {
             throw new IllegalStateException(result.reason);
@@ -89,9 +90,14 @@ public class Building {
         return result.building;
     }
 
-    private MoveResult move(Direction direction, List<Item> items) {
-        Args.check(items.size() == 1 || items.size() == 2, "can't move %s items ", items.size());
+    private static <E> List<E> toList(Collection<E> collection) {
+        return collection instanceof List ? (List<E>) collection : new ArrayList<>(collection);
+    }
+
+    private MoveResult move(Direction direction, Collection<Item> itemCollection) {
+        Args.check(itemCollection.size() == 1 || itemCollection.size() == 2, "can't move %s items ", itemCollection.size());
         Args.check(direction != null, "direction must be nonnull");
+        List<Item> items = toList(itemCollection);
         Args.check(items.size() == 1 || items.get(0).isSafeWith(items.get(1)), "item combo unsafe: %s", items);
         int newPos = elevatorPosition + direction.offset();
         if (newPos < 0 || newPos >= floors.size()) {
@@ -123,6 +129,46 @@ public class Building {
         return MoveResult.valid(new Building(newPos, newBuildingFloors, numMoves + 1));
     }
 
+    static <E> boolean notSameItems(List<E> c1, List<E> c2) {
+        if (c1.size() != c2.size()) {
+            return true;
+        }
+        if (c1.isEmpty() && c2.isEmpty()) {
+            return false;
+        }
+        for (E item : c1) {
+            if (!c2.contains(item)) {
+                return true;
+            }
+        }
+        for (E item : c2) {
+            if (!c1.contains(item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Stream<Building> toMoves(Direction direction, Stream<List<Item>> carryables, Collection<Building> prohibited) {
+        Args.check(direction != null, "direction must be nonnull");
+        return carryables
+                 .map(items -> move(direction, items))
+                .filter(MoveResult::isValid)
+                .map(result -> result.building)
+                .filter(next -> !prohibited.contains(next));
+    }
+
+    public Stream<Building> findValidMovesExcept(Collection<Building> prohibited) {
+        Floor current = floors.get(elevatorPosition);
+        Stream<List<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
+        Stream<List<Item>> singletons = current.items.stream().map(Collections::singletonList);
+        List<List<Item>> carryables = Stream.concat(singletons, pairs)
+                .collect(Collectors.toList());
+        Stream<Building> upMoves = toMoves(Direction.UP, carryables.stream(), prohibited);
+        Stream<Building> downMoves = toMoves(Direction.DOWN, carryables.stream(), prohibited);
+        Stream<Building> allMoves = Stream.concat(upMoves, downMoves);
+        return allMoves;
+    }
 
     @SuppressWarnings("SameParameterValue")
     private static <E> ArrayList<E> repeat(E element, int count) {
@@ -133,11 +179,49 @@ public class Building {
         return list;
     }
 
-    public void dump(PrintStream out) {
+    public PrintStream dump(PrintStream out) {
         int maxPlacement = items().map(x -> x.placement).max(Integer::compare).orElse(0);
         for (int i = floors.size() - 1; i >= 0; i--) {
             String label = String.valueOf(i + 1);
             out.format("F%s %s %s%n", label, i == elevatorPosition ? "E " : ". ", floors.get(i).toString(maxPlacement));
+        }
+        return out;
+    }
+
+    /**
+     *
+     * @param moves
+     * @param out
+     */
+    public static void dump(List<Building> moves, PrintStream out) {
+        for (Building b : moves) {
+            out.format("move %d:%n", b.numMoves);
+            b.dump(out).println();
+        }
+    }
+
+    public static Comparator<Building> moveNumberComparator() {
+        return new Comparator<Building>() {
+            @Override
+            public int compare(Building o1, Building o2) {
+                return o1.numMoves - o2.numMoves;
+            }
+        };
+    }
+
+    public static int count(Collection<Building> moves) {
+        if (moves.isEmpty()) {
+            return 0;
+        }
+        List<Building> ordered = new ArrayList<>(moves);
+        ordered.sort(moveNumberComparator());
+        for (int i = 1; i < ordered.size(); i++) {
+            Args.check(ordered.get(i).numMoves == ordered.get(i - 1).numMoves + 1, "moves not consecutive: %s", ordered);
+        }
+        if (ordered.get(0).numMoves == 0) {
+            return ordered.size() - 1;
+        } else {
+            throw new IllegalArgumentException("expected moves collection include numMoves=[0..n], not " + ordered);
         }
     }
 
@@ -151,5 +235,26 @@ public class Building {
             throw new NoSuchElementException(element.symbol + " " + kind.symbol);
         }
         return item;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Building building = (Building) o;
+        if (elevatorPosition != building.elevatorPosition) return false;
+        return floors.equals(building.floors);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = elevatorPosition;
+        result = 31 * result + floors.hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Building{move=%d,numFloors=%d,numItems=%d}", numMoves, floors.size(), items().count());
     }
 }

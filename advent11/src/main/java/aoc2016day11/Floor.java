@@ -1,7 +1,6 @@
 package aoc2016day11;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,4 +51,18 @@ public class Floor {
         return items.isEmpty();
     }
 
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof Floor
+                && toSet(items).equals(toSet(((Floor)other).items));
+    }
+
+    @Override
+    public int hashCode() {
+        return items.hashCode();
+    }
+
+    private static <E> Set<E> toSet(Collection<E> c) {
+        return c instanceof Set ? (Set<E>) c : new HashSet<>(c);
+    }
 }

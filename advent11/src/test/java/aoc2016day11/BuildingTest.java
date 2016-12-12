@@ -81,7 +81,7 @@ public class BuildingTest {
         dump(b);
         b = b.moveChecked(DOWN, asList(LM));
         dump(b);
-        b = b.moveChecked(UP, asList(LM, HM));;
+        b = b.moveChecked(UP, asList(LM, HM));
         System.out.println("final:");
         b.dump(System.out);
         System.out.println();
@@ -107,7 +107,7 @@ public class BuildingTest {
         Item.placements.set(0);
     }
 
-    private static Building example() {
+    static Building example() {
         /*
         The first floor contains a hydrogen-compatible microchip
             and a lithium-compatible microchip.
