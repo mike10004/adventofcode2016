@@ -23,7 +23,7 @@ public class BuildingTest {
 
     @Test
     public void isEverythingAtTopFloor() throws Exception {
-        assertTrue(building(2, floor()).isEverythingAtTopFloor());
+        assertTrue(building(0, floor()).isEverythingAtTopFloor());
         assertTrue(building(2, floor(), floor(), floor(generator(strontium))).isEverythingAtTopFloor());
         assertFalse(building(2, floor(), floor(generator(strontium)), floor()).isEverythingAtTopFloor());
     }
@@ -100,11 +100,6 @@ public class BuildingTest {
 
     private static <E> List<E> asList(E e1, E e2) {
         return Arrays.asList(e1, e2);
-    }
-
-    @Before
-    public void resetPlacements() {
-        Item.placements.set(0);
     }
 
     static Building example() {

@@ -3,6 +3,8 @@ package aoc2016day11;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import static aoc2016day11.Element.*;
 import static aoc2016day11.Item.generator;
 import static aoc2016day11.Item.microchip;
@@ -10,12 +12,10 @@ import static aoc2016day11.Item.microchip;
 public class Agent {
 
     private final int maxMoves;
-    private final Set<Integer> pathLengths;
     private long attemptCounter = 0;
 
     public Agent(int maxMoves) {
         this.maxMoves = maxMoves;
-        pathLengths = new HashSet<>();
     }
 
     /**
@@ -24,9 +24,52 @@ public class Agent {
      * @param building
      * @return the path that won; absent if no path won in this agent's max moves
      */
-    public Optional<List<Building>> play(Building building) {
-        List<Building> winningPath = play(building, Collections.emptyList());
+    public Optional<List<Building>> playRecursive(Building building) {
+        List<Building> winningPath = playRecursive(building, Collections.emptyList());
         return Optional.ofNullable(winningPath);
+    }
+
+    private int currentDepth = -1;
+
+    private int reachedDepth(int depth) {
+        if (currentDepth != depth) {
+            depthChanged(depth);
+        }
+        currentDepth = depth;
+        return depth;
+    }
+
+    public Optional<List<Building>> play(Building building) {
+        GameTreeTraverser t = new GameTreeTraverser();
+        Iterator<TreeNode<Building>> nodes = t.breadthFirstTraversal(new TreeNode<>(building));
+        while (nodes.hasNext()) {
+            TreeNode<Building> node = nodes.next();
+            int level = reachedDepth(node.getLevel());
+            if (level > maxMoves) {
+                break;
+            }
+            Building state = node.getUserObject();
+            if (state.isWin()) {
+                List<Building> path = node.getUserObjectPath();
+                return Optional.of(Collections.unmodifiableList(path));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static class GameTreeTraverser extends TreeTraverser<TreeNode<Building>> {
+
+        @Override
+        public Stream<TreeNode<Building>> children(TreeNode<Building> root) {
+            final List<Building> strategy = root.getUserObjectPath();
+            List<Building> children = root.getUserObject().findValidMovesExcept(strategy).collect(Collectors.toList());
+            children.forEach(child -> {
+                TreeNode<Building> childNode = new TreeNode<>(child);
+                root.add(childNode);
+                Args.checkState(childNode.getLevel() > 0, "expected node with level > 0");
+            });
+            return root.streamChildren();
+        }
     }
 
     private static <E> List<E> append(List<E> previous, E tail) {
@@ -38,15 +81,17 @@ public class Agent {
 
     private static final boolean debug = true;
 
-    private void maybePrintAttempts(int period) {
-        if (debug && attemptCounter % period == 0) {
-            System.out.format("%d attempts so far%n", attemptCounter);
-        }
+    @SuppressWarnings("SameParameterValue")
+    protected void maybePrintAttempts(long attempts) {
     }
 
-    private @Nullable List<Building> play(Building building, List<Building> path0) {
+    protected void depthChanged(int newDepth) {
+
+    }
+
+    private @Nullable List<Building> playRecursive(Building building, List<Building> path0) {
         attemptCounter++;
-        maybePrintAttempts(1000000);
+        maybePrintAttempts(attemptCounter);
         final List<Building> path = append(path0, building);
         if (building.isWin()) {
             return path;
@@ -54,15 +99,10 @@ public class Agent {
         if (building.numMoves >= maxMoves) {
             return null;
         }
-        List<Building> nextMoves = building.findValidMovesExcept(path).collect(Collectors.toList());
-        for (Building move : nextMoves) {
-            List<Building> winner = play(move, path);
-            if (winner != null) {
-                return winner;
-            }
-        }
-//        System.out.format("examined paths of length %d%n", path0.size());
-        return null;
+        Optional<List<Building>> winnerOpt = building.findValidMovesExcept(path)
+                .map(move -> playRecursive(move, path))
+                .filter(Objects::nonNull).findFirst();
+        return winnerOpt.orElse(null);
     }
 
     public static void main(String[] args) throws Exception {
@@ -83,18 +123,14 @@ public class Agent {
         The fourth floor contains nothing relevant.
          */
 
-        Building building = Building.onFirstFloor(Arrays.asList(
-                new Floor(Arrays.asList(generator(thulium),
-                        microchip(thulium),
-                        generator(plutonium),
-                        generator(strontium))),
-                new Floor(Arrays.asList(microchip(plutonium), microchip(strontium))),
-                new Floor(Arrays.asList(generator(promethium), microchip(promethium),
-                        generator(ruthenium), microchip(ruthenium))),
-                new Floor(Collections.emptyList())
-        ));
+        Building building = Play.createPuzzleInputBuilding();
         int maxMoves = 32;
-        Agent agent = new Agent(maxMoves);
+        Agent agent = new Agent(maxMoves) {
+            @Override
+            protected void depthChanged(int newDepth) {
+                System.out.format("examining strategies at depth %d%n", newDepth);
+            }
+        };
         Optional<List<Building>> strategy = agent.play(building);
         if (strategy.isPresent()) {
             List<Building> path = strategy.get();

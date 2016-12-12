@@ -9,16 +9,44 @@ import java.util.stream.Stream;
 
 public class Item {
 
-    static final AtomicInteger placements = new AtomicInteger(0);
+    private static final AtomicInteger placements = new AtomicInteger(0);
 
     public final Kind kind;
     public final Element element;
     public final int placement;
 
-    public Item(Kind kind, Element element) {
+    private Item(Kind kind, Element element) {
         this.kind = Objects.requireNonNull(kind);
         this.element = Objects.requireNonNull(element);
         this.placement = placements.getAndIncrement();
+    }
+
+    private static Item[] microchips = new Item[Element.VALUES.size()];
+    private static Item[] generators = new Item[Element.VALUES.size()];
+
+    static {
+        for (int i = 0; i < Element.VALUES.size(); i++) {
+            Element element = Element.VALUES.get(i);
+            Args.checkState(element.ordinal() == i);
+            microchips[i] = new Item(Kind.microchip, element);
+            generators[i] = new Item(Kind.generator, element);
+        }
+    }
+
+    public static int getNumItems() {
+        return microchips.length + generators.length;
+    }
+
+    public static Stream<Item> forElements(Set<Element> elements) {
+        Stream<Item> items = Stream.concat(Stream.of(microchips), Stream.of(generators));
+        return items.filter(x -> elements.contains(x.element));
+    }
+
+    public static Item of(Kind kind, Element element) {
+        Objects.requireNonNull(kind, "kind");
+        Objects.requireNonNull(element, "element");
+        int index = element.ordinal();
+        return kind == Kind.generator ? generators[index] : microchips[index];
     }
 
     public static void removeOrDie(Item item, Collection<Item> items) {
@@ -29,11 +57,11 @@ public class Item {
     }
 
     public static Item microchip(Element element) {
-        return new Item(Kind.microchip, element);
+        return of(Kind.microchip, element);
     }
 
     public static Item generator(Element element) {
-        return new Item(Kind.generator, element);
+        return of(Kind.generator, element);
     }
 
     @Override
