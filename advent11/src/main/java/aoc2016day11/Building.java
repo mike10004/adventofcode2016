@@ -158,6 +158,32 @@ public class Building {
                 .filter(next -> !prohibited.contains(next));
     }
 
+    public static class Move {
+        public final Direction direction;
+        public final List<Item> carrying;
+
+        public Move(Direction direction, List<Item> carrying) {
+            this.direction = Objects.requireNonNull(direction);
+            this.carrying = Collections.unmodifiableList(Objects.requireNonNull(carrying));
+        }
+
+        public String toString() {
+            return direction + " with " + carrying;
+        }
+    }
+
+    public Stream<Move> listValidMoves() {
+        Floor current = floors.get(elevatorPosition);
+        Stream<List<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
+        Stream<List<Item>> singletons = current.items.stream().map(Collections::singletonList);
+        List<List<Item>> carryables = Stream.concat(singletons, pairs)
+                .collect(Collectors.toList());
+        Predicate<Move> valid = m -> move(m.direction, m.carrying).isValid();
+        Stream<Move> upMoves = carryables.stream().map(c -> new Move(Direction.UP, c)).filter(valid);
+        Stream<Move> downMoves = carryables.stream().map(c -> new Move(Direction.DOWN, c)).filter(valid);
+        return Stream.concat(upMoves, downMoves);
+    }
+
     public Stream<Building> findValidMovesExcept(Collection<Building> prohibited) {
         Floor current = floors.get(elevatorPosition);
         Stream<List<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
@@ -218,11 +244,12 @@ public class Building {
         for (int i = 1; i < ordered.size(); i++) {
             Args.check(ordered.get(i).numMoves == ordered.get(i - 1).numMoves + 1, "moves not consecutive: %s", ordered);
         }
-        if (ordered.get(0).numMoves == 0) {
-            return ordered.size() - 1;
-        } else {
-            throw new IllegalArgumentException("expected moves collection include numMoves=[0..n], not " + ordered);
-        }
+        return ordered.stream().max(moveNumberComparator()).get().numMoves;
+//        if (ordered.get(0).numMoves == 0) {
+//            return ordered.size() - 1;
+//        } else {
+//            throw new IllegalArgumentException("expected moves collection include numMoves=[0..n], not " + ordered);
+//        }
     }
 
     public Stream<Item> items() {

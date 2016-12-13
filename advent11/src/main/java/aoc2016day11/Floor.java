@@ -16,6 +16,16 @@ public class Floor {
         this.items = Collections.unmodifiableList(items);
     }
 
+    private static final Floor empty = new Floor(Collections.emptyList());
+
+    public static Floor empty() {
+        return empty;
+    }
+
+    public static Floor with(List<Item> items) {
+        return items.isEmpty() ? empty() : new Floor(items);
+    }
+
     private Item findItemByPlacement(int placement) {
         for (Item item : items) {
             if (item.placement == placement) {
@@ -27,7 +37,7 @@ public class Floor {
 
     @Override
     public String toString() {
-        return toString(Item.placements.get());
+        return toString(Item.getNumItems());
     }
 
     public String toString(int maxPlacement) {

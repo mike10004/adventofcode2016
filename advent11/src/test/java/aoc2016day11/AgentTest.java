@@ -13,7 +13,12 @@ public class AgentTest {
     @Test
     public void playExample() throws Exception {
         Building exampleBuilding = BuildingTest.example();
-        Agent agent = new Agent(11);
+        Agent agent = new Agent(11) {
+            @Override
+            protected void depthChanged(int newDepth) {
+                System.out.format("examining strategies at depth %d%n", newDepth);
+            }
+        };
         Optional<List<Building>> result = agent.play(exampleBuilding);
         assertTrue("result absent", result.isPresent());
         Building.dump(result.get(), System.out);
