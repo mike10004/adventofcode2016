@@ -4,6 +4,7 @@
 
 var assert = require('assert');
 var logger = console.error;
+
 function Point(x, y) {
     assert(typeof(x) === 'number' && typeof(y) === 'number', 'x and y must be numbers');
     this.x = x;
@@ -52,6 +53,10 @@ function Point(x, y) {
         return Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2));
     };
 
+    this.taxicabDistanceTo = function(p) {
+        return Math.abs(p.x - x) + Math.abs(p.y - y);
+    }
+
     this.comparator = function(a, b) {
         var aDist = a.distanceTo(me), bDist = b.distanceTo(me);
         return aDist - bDist; // if aDist < bDist, return negative so that a precedes b in sort order
@@ -83,32 +88,42 @@ function AgentFactory(wallFilter) {
     assert(typeof(wallFilter) === 'function');
     
     this.start = function(point) {
-        return new Agent(point, null, 0);
+        return new Agent(point, new Array(), 0);
     };
+
+    function indexOfPoint(array, p) {
+        for (var i in array) {
+            if (p.equals(array[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
 
     /**
      * @param {Point} point current position
-     * @param {Point} previous previous position
+     * @param {Point} previous array of positions we've already been to
      * @param {Point} numMoves how many moves it took to get here
      * @param {function} wallFilter predicate applied to points to filter out walls from possible next moves list  
      */
     function Agent(point, previous, numMoves) {
         assert(typeof(point) === 'object', 'point must be Point: ' + point);
-        assert(previous === null || typeof(previous) === 'object', 'previous invalid: ' + previous);
+        assert(previous instanceof Array, 'previous must be Array: ' + previous);
         assert(typeof(numMoves) === 'number', 'numMoves must be number: ' + numMoves);
         var me = this;
-
         this.move = function(destination, maxMoves) {
             assert.equal(typeof(maxMoves), 'number', 'maxMoves must be a number');
             assert.ok(maxMoves >= 0, 'required: maxMoves >= 0; maxMoves = ' + maxMoves);
+            
             if (point.equals(destination)) {
                 return numMoves;
             }
             if (numMoves < maxMoves) {
-                var neighbors = point.neighbors(wallFilter).filter(p => !p.equals(previous));
+                var neighbors = point.neighbors(wallFilter)
+                        .filter(p => indexOfPoint(previous, p) === -1);
                 neighbors.sort(destination.comparator);
                 for (var i in neighbors) {
-                    var nextAgent = new Agent(neighbors[i], point, numMoves + 1);
+                    var nextAgent = new Agent(neighbors[i], previous.concat([point]), numMoves + 1);
                     var answer = nextAgent.move(destination, maxMoves);
                     if (answer >= 0) {
                         return answer;
@@ -122,8 +137,11 @@ function AgentFactory(wallFilter) {
 }
 
 function findMinimumMoves(start, destination, agentFactory, maxMoves, lowerBound) {
-    var upperBound = lowerBound || 0;
+    maxMoves = maxMoves || Math.pow(2, start.taxicabDistanceTo(destination));
+    lowerBound = lowerBound || start.taxicabDistanceTo(destination);
+    var upperBound = lowerBound;
     var result = -1;
+    logger('findMinimumMoves: from ' + start + ' to ' + destination + ' in ' + maxMoves + ' or less');
     while (upperBound <= maxMoves) {
         logger('findMinimumMoves: searching for solution in <= ' + upperBound + ' moves');
         var agent = agentFactory.start(start);
@@ -182,12 +200,14 @@ function doUnitTest() {
     var numTests = 0;
     function test(boardObj, start, destination, numMoves) {
         logger(++numTests, "test", boardObj.cells.length, start.toString(), destination.toString(), numMoves);
-        var agentFactory = new AgentFactory(makeWallFilter(boardObj.cells, boardObj.numColumns));
-        var answer = findMinimumMoves(start, destination, agentFactory, numMoves + 1);
+        var wallFilter = makeWallFilter(boardObj.cells, boardObj.numColumns);
+        assert.equal(wallFilter(destination), true, "destination " + destination + " must not be a wall");
+        var agentFactory = new AgentFactory(wallFilter);
+        var answer = findMinimumMoves(start, destination, agentFactory);
         if (answer !== numMoves) {
             logger(boardObj.rendered);
             logger('start ' + start + ', destination = ' + destination + ', numMoves= ' + numMoves);
-            logger("wrong answer: " + answer + "; expected " + numMoves);
+            logger(numTests, "wrong answer: " + answer + "; expected " + numMoves);
             process.exit(1);
         }
         assert.equal(numMoves, answer);
@@ -197,11 +217,24 @@ function doUnitTest() {
         return new Point(x, y);
     }
 
-    // test(newBoard('.'), p(0, 0), p(0, 0), 0);
-    // test(newBoard('..'), p(0, 0), p(1, 0), 1);
-    test(newBoard(['..', '..']), p(0, 0), p(1, 1), 2);
-    test(newBoard(['.#', '..']), p(0, 0), p(1, 1), 2);
-
+    test(newBoard('.'), p(0, 0), p(0, 0), 0);
+    test(newBoard('..'), p(0, 0), p(1, 0), 1);
+    test(newBoard('..', '..'), p(0, 0), p(1, 1), 2);
+    test(newBoard('.#', '..'), p(0, 0), p(1, 1), 2);
+    test(newBoard('.#.',
+                  '...'), p(0, 0), p(2, 0), 4);
+    test(newBoard('..#.',
+                  '#...'), p(0, 0), p(3, 0), 5);
+    test(newBoard('..#.',
+                  '....'), p(0, 0), p(3, 0), 5);
+    test(newBoard('..#.',
+                  '..#.',
+                  '....'), p(0, 0), p(3, 0), 7);
+    test(newBoard('..#.#',
+                  '..##.',
+                  '#..#.',
+                  '..#..',
+                  '#...#'), p(0, 0), p(4, 3), 9);
 
 }
 
@@ -216,14 +249,12 @@ function doGivenTest() {
     }
 }
 
-function doPartOne(favNumber, from, to){
-    var lowerBound = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
-    var maxMoves = lowerBound * 2;
+function doPartOne(favNumber, from, to, maxMoves){
     var agentFactory = new AgentFactory(p => !isWall(p, favNumber));
-    var result = findMinimumMoves(from, to, agentFactory, maxMoves, lowerBound);
+    var result = findMinimumMoves(from, to, agentFactory, maxMoves);
     console.log(result);
 }
 
 // doUnitTest();
 // doGivenTest();
-doPartOne(1364, new Point(1, 1), new Point(31, 39), 100);
+doPartOne(1364, new Point(1, 1), new Point(31, 39), 93);
