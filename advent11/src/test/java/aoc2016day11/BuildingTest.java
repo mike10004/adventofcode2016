@@ -1,21 +1,22 @@
 package aoc2016day11;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Stream;
 
+import static aoc2016day11.Direction.DOWN;
+import static aoc2016day11.Direction.UP;
+import static aoc2016day11.Element.hydrogen;
+import static aoc2016day11.Element.lithium;
+import static aoc2016day11.Element.strontium;
+import static aoc2016day11.Item.generator;
 import static aoc2016day11.Kind.generator;
 import static aoc2016day11.Kind.microchip;
-import static org.junit.Assert.*;
-import static aoc2016day11.Element.*;
-import static aoc2016day11.Item.generator;
-import static aoc2016day11.Item.microchip;
-import static aoc2016day11.Direction.UP;
-import static aoc2016day11.Direction.DOWN;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
@@ -23,26 +24,26 @@ public class BuildingTest {
 
     @Test
     public void isEverythingAtTopFloor() throws Exception {
-        assertTrue(building(0, floor()).isEverythingAtTopFloor());
+        assertTrue(building(0, floor(generator(strontium))).isEverythingAtTopFloor());
         assertTrue(building(2, floor(), floor(), floor(generator(strontium))).isEverythingAtTopFloor());
-        assertFalse(building(2, floor(), floor(generator(strontium)), floor()).isEverythingAtTopFloor());
+        assertFalse(building(1, floor(), floor(generator(strontium)), floor()).isEverythingAtTopFloor());
     }
 
     @Test
     public void isElevatorAtTop() throws Exception {
-        assertTrue(building(0, floor()).isElevatorAtTop());
-        assertTrue(building(1, floor(), floor()).isElevatorAtTop());
-        assertFalse(building(0, floor(), floor()).isElevatorAtTop());
+        assertTrue(building(0, floor(generator(strontium))).isElevatorAtTop());
+        assertTrue(building(1, floor(), floor(generator(strontium))).isElevatorAtTop());
+        assertFalse(building(0, floor(generator(strontium)), floor()).isElevatorAtTop());
     }
 
     @Test
     public void dump() throws Exception {
-        example().dump(System.out);
+        Play.createExampleBuilding().dump(System.out);
     }
 
     @Test
     public void givenTestCase() throws Exception {
-        Building b = example();
+        Building b = Play.createExampleBuilding();
         Item HG = b.findItem(generator, hydrogen), HM = b.findItem(microchip, hydrogen);
         Item LG = b.findItem(generator, lithium), LM = b.findItem(microchip, lithium);
 /*
@@ -102,30 +103,11 @@ public class BuildingTest {
         return Arrays.asList(e1, e2);
     }
 
-    static Building example() {
-        /*
-        The first floor contains a hydrogen-compatible microchip
-            and a lithium-compatible microchip.
-        The second floor contains a hydrogen generator.
-        The third floor contains a lithium generator.
-        The fourth floor contains nothing relevant.
-         */
-        Item hg = generator(hydrogen);
-        Item hm = microchip(hydrogen);
-        Item lg = generator(lithium);
-        Item lm = microchip(lithium);
-        return building(0,
-                floor(hm, lm),
-                floor(hg),
-                floor(lg),
-                floor());
-    }
-
     private static Building building(int elevatorPosition, Floor...floors) {
         return new Building(elevatorPosition, Arrays.asList(floors));
     }
 
     private static Floor floor(Item...items) {
-        return new Floor(Stream.of(items));
+        return Floor.Factory.getInstance().get(Arrays.asList(items));
     }
 }

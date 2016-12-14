@@ -1,5 +1,8 @@
 package aoc2016day11;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+
 import javax.annotation.Nullable;
 import java.io.PrintStream;
 import java.util.*;
@@ -8,23 +11,28 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Building {
+public final class Building {
 
     public static final AtomicLong counter = new AtomicLong(0L);
     private final int elevatorPosition;
-    public final List<Floor> floors;
-    public final transient int numMoves;
+    private final Floor.Factory floorFactory;
+    public final ImmutableList<Floor> floors;
+    public final int numMoves;
 
-    Building(int elevatorPosition, List<Floor> floors) {
+    public Building(int elevatorPosition, List<Floor> floors) {
         this(elevatorPosition, floors, 0);
     }
 
     Building(int elevatorPosition, List<Floor> floors, int numMoves) {
         this.numMoves = numMoves;
-        this.floors = Collections.unmodifiableList(new ArrayList<>(floors));
+        floorFactory = Floor.Factory.getInstance();
+        this.floors = ImmutableList.copyOf(floors);
         Args.check(elevatorPosition >= 0 && elevatorPosition < this.floors.size(), "position %s invalid for %s-floor building", elevatorPosition, this.floors.size());
         Args.check(!this.floors.isEmpty(), "building cannot be empty");
         this.elevatorPosition = elevatorPosition;
+        if (floors.get(elevatorPosition).isEmpty()) {
+            throw new IllegalArgumentException("can't start on floor with no items; elevatorPosition = " + elevatorPosition);
+        }
         counter.incrementAndGet();
     }
 
@@ -55,7 +63,7 @@ public class Building {
         return isEverythingAtTopFloor() && isElevatorAtTop();
     }
 
-    public static class MoveResult {
+    public static final class MoveResult {
         final Building building;
         final String reason;
 
@@ -119,9 +127,9 @@ public class Building {
         List<Floor> newBuildingFloors = repeat(null, floors.size());
         for (int i = 0; i < floors.size(); i++) {
             if (i == elevatorPosition) {
-                newBuildingFloors.set(i, new Floor(currentItems));
+                newBuildingFloors.set(i, floorFactory.get(currentItems));
             } else if (i == newPos) {
-                newBuildingFloors.set(i, new Floor(nextItems));
+                newBuildingFloors.set(i, floorFactory.get(nextItems));
             } else {
                 newBuildingFloors.set(i, floors.get(i));
             }
@@ -149,7 +157,7 @@ public class Building {
         return false;
     }
 
-    private Stream<Building> toMoves(Direction direction, Stream<List<Item>> carryables, Collection<Building> prohibited) {
+    private Stream<Building> toMoves(Direction direction, Stream<ImmutableSet<Item>> carryables, Collection<Building> prohibited) {
         Args.check(direction != null, "direction must be nonnull");
         return carryables
                  .map(items -> move(direction, items))
@@ -158,26 +166,35 @@ public class Building {
                 .filter(next -> !prohibited.contains(next));
     }
 
-    public static class Move {
+    public static final class Move {
         public final Direction direction;
-        public final List<Item> carrying;
+        public final ImmutableSet<Item> carrying;
 
-        public Move(Direction direction, List<Item> carrying) {
+        public Move(Direction direction, Collection<Item> carrying) {
             this.direction = Objects.requireNonNull(direction);
-            this.carrying = Collections.unmodifiableList(Objects.requireNonNull(carrying));
+            this.carrying = ImmutableSet.copyOf(carrying);
         }
 
         public String toString() {
             return direction + " with " + carrying;
         }
+
+        public MoveResult perform(Building from) {
+            return from.move(direction, carrying);
+        }
+    }
+
+    private List<ImmutableSet<Item>> listCarryables() {
+        Floor current = floors.get(elevatorPosition);
+        Stream<ImmutableSet<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
+        Stream<ImmutableSet<Item>> singletons = current.items.stream().map(ImmutableSet::of);
+        List<ImmutableSet<Item>> carryables = Stream.concat(singletons, pairs)
+                .collect(Collectors.toList());
+        return carryables;
     }
 
     public Stream<Move> listValidMoves() {
-        Floor current = floors.get(elevatorPosition);
-        Stream<List<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
-        Stream<List<Item>> singletons = current.items.stream().map(Collections::singletonList);
-        List<List<Item>> carryables = Stream.concat(singletons, pairs)
-                .collect(Collectors.toList());
+        List<ImmutableSet<Item>> carryables = listCarryables();
         Predicate<Move> valid = m -> move(m.direction, m.carrying).isValid();
         Stream<Move> upMoves = carryables.stream().map(c -> new Move(Direction.UP, c)).filter(valid);
         Stream<Move> downMoves = carryables.stream().map(c -> new Move(Direction.DOWN, c)).filter(valid);
@@ -185,11 +202,7 @@ public class Building {
     }
 
     public Stream<Building> findValidMovesExcept(Collection<Building> prohibited) {
-        Floor current = floors.get(elevatorPosition);
-        Stream<List<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
-        Stream<List<Item>> singletons = current.items.stream().map(Collections::singletonList);
-        List<List<Item>> carryables = Stream.concat(singletons, pairs)
-                .collect(Collectors.toList());
+        List<ImmutableSet<Item>> carryables = listCarryables();
         Stream<Building> upMoves = toMoves(Direction.UP, carryables.stream(), prohibited);
         Stream<Building> downMoves = toMoves(Direction.DOWN, carryables.stream(), prohibited);
         Stream<Building> allMoves = Stream.concat(upMoves, downMoves);

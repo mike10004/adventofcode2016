@@ -1,18 +1,18 @@
 package aoc2016day11;
 
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.TreeTraverser;
+
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static aoc2016day11.Element.*;
-import static aoc2016day11.Item.generator;
-import static aoc2016day11.Item.microchip;
 
 public class Agent {
 
     private final int maxMoves;
-    private long attemptCounter = 0;
 
     public Agent(int maxMoves) {
         this.maxMoves = maxMoves;
@@ -21,11 +21,11 @@ public class Agent {
     /**
      * Play until you get a win, or return null if winning is impossible.
      *
-     * @param building
+     * @param building starting position
      * @return the path that won; absent if no path won in this agent's max moves
      */
-    public Optional<List<Building>> playRecursive(Building building) {
-        List<Building> winningPath = playRecursive(building, Collections.emptyList());
+    public Optional<List<Building>> playDepthFirst(Building building) {
+        List<Building> winningPath = playDepthFirst(building, Collections.emptyList(), 0);
         return Optional.ofNullable(winningPath);
     }
 
@@ -41,7 +41,7 @@ public class Agent {
 
     public Optional<List<Building>> play(Building building) {
         GameTreeTraverser t = new GameTreeTraverser();
-        Iterator<TreeNode<Building>> nodes = t.breadthFirstTraversal(new TreeNode<>(building));
+        Iterator<TreeNode<Building>> nodes = t.breadthFirstTraversal(new TreeNode<>(building)).iterator();
         while (nodes.hasNext()) {
             TreeNode<Building> node = nodes.next();
             int level = reachedDepth(node.getLevel());
@@ -60,7 +60,7 @@ public class Agent {
     private static class GameTreeTraverser extends TreeTraverser<TreeNode<Building>> {
 
         @Override
-        public Stream<TreeNode<Building>> children(TreeNode<Building> root) {
+        public Iterable<TreeNode<Building>> children(TreeNode<Building> root) {
             final List<Building> strategy = root.getUserObjectPath();
             List<Building> children = root.getUserObject().findValidMovesExcept(strategy).collect(Collectors.toList());
             children.forEach(child -> {
@@ -68,7 +68,12 @@ public class Agent {
                 root.add(childNode);
                 Args.checkState(childNode.getLevel() > 0, "expected node with level > 0");
             });
-            return root.streamChildren();
+            return new FluentIterable<TreeNode<Building>>() {
+                @Override
+                public Iterator<TreeNode<Building>> iterator() {
+                    return root.children();
+                }
+            };
         }
     }
 
@@ -79,8 +84,6 @@ public class Agent {
         return Collections.unmodifiableList(next);
     }
 
-    private static final boolean debug = true;
-
     @SuppressWarnings("SameParameterValue")
     protected void maybePrintAttempts(long attempts) {
     }
@@ -89,8 +92,7 @@ public class Agent {
 
     }
 
-    private @Nullable List<Building> playRecursive(Building building, List<Building> path0) {
-        attemptCounter++;
+    private @Nullable List<Building> playDepthFirst(Building building, List<Building> path0, long attemptCounter) {
         maybePrintAttempts(attemptCounter);
         final List<Building> path = append(path0, building);
         if (building.isWin()) {
@@ -100,7 +102,7 @@ public class Agent {
             return null;
         }
         Optional<List<Building>> winnerOpt = building.findValidMovesExcept(path)
-                .map(move -> playRecursive(move, path))
+                .map(move -> playDepthFirst(move, path, attemptCounter + 1))
                 .filter(Objects::nonNull).findFirst();
         return winnerOpt.orElse(null);
     }

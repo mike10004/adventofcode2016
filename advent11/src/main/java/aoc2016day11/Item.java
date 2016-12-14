@@ -1,5 +1,7 @@
 package aoc2016day11;
 
+import com.google.common.collect.ImmutableSet;
+
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -7,18 +9,20 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Item {
+public final class Item {
 
     private static final AtomicInteger placements = new AtomicInteger(0);
 
     public final Kind kind;
     public final Element element;
     public final int placement;
+    private final int hashCode;
 
-    private Item(Kind kind, Element element) {
+    private Item(Kind kind, Element element, int hashCode) {
         this.kind = Objects.requireNonNull(kind);
         this.element = Objects.requireNonNull(element);
         this.placement = placements.getAndIncrement();
+        this.hashCode = hashCode;
     }
 
     private static Item[] microchips = new Item[Element.VALUES.size()];
@@ -28,13 +32,17 @@ public class Item {
         for (int i = 0; i < Element.VALUES.size(); i++) {
             Element element = Element.VALUES.get(i);
             Args.checkState(element.ordinal() == i);
-            microchips[i] = new Item(Kind.microchip, element);
-            generators[i] = new Item(Kind.generator, element);
+            microchips[i] = new Item(Kind.microchip, element, i + 1);
+            generators[i] = new Item(Kind.generator, element, Element.VALUES.size() + i + 1);
         }
     }
 
     public static int getNumItems() {
         return microchips.length + generators.length;
+    }
+
+    public static Stream<Item> streamItems() {
+        return Stream.concat(Stream.of(microchips), Stream.of(generators));
     }
 
     public static Stream<Item> forElements(Set<Element> elements) {
@@ -65,19 +73,8 @@ public class Item {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Item item = (Item) o;
-        if (kind != item.kind) return false;
-        return element == item.element;
-    }
-
-    @Override
     public int hashCode() {
-        int result = kind.hashCode();
-        result = 31 * result + element.hashCode();
-        return result;
+        return hashCode;
     }
 
     public String toString() {
@@ -103,9 +100,8 @@ public class Item {
         return areSafe(itemList);
     }
 
-    public static boolean areSafe(List<Item> itemList) {
-        for (int i = 0; i < itemList.size(); i++) {
-            Item item = itemList.get(i);
+    public static boolean areSafe(Collection<Item> itemList) {
+        for (Item item : itemList) {
             Stream<Item> others = itemList.stream().filter(Predicate.isEqual(item).negate());
             if (!item.isSafeWith(others)) {
                 return false;
@@ -127,7 +123,7 @@ public class Item {
         return maybeFindItem(items, kind, element) != null;
     }
 
-    public boolean isSafeWith(List<Item> itemList) {
+    public boolean isSafeWith(Collection<Item> itemList) {
         if (kind == Kind.generator) {
             Stream<Item> microchipsOfOtherElements = itemList.stream()
                     .filter(Item::isMicrochip).filter(m -> m.element != element);
@@ -144,18 +140,18 @@ public class Item {
      * list in the returned stream has length 2.
      * @return all pairs of the given items
      */
-    public static Stream<List<Item>> pairs(List<Item> all) {
+    public static Stream<ImmutableSet<Item>> pairs(Set<Item> all) {
         if (all.size() < 2) {
             return Stream.empty();
         }
         List<Item> copy = new ArrayList<>(all);
         if (all.size() == 2) {
-            return Stream.of(copy);
+            return Stream.of(ImmutableSet.copyOf(all));
         }
-        List<List<Item>> pairs = new ArrayList<>();
+        List<ImmutableSet<Item>> pairs = new ArrayList<>();
         for (int i = 0; i < copy.size(); i++) {
             for (int j = i + 1; j < copy.size(); j++) {
-                pairs.add(Arrays.asList(copy.get(i), copy.get(j)));
+                pairs.add(ImmutableSet.of(copy.get(i), copy.get(j)));
             }
         }
         return pairs.stream();

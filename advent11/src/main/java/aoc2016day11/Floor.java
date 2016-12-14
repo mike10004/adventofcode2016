@@ -1,29 +1,89 @@
 package aoc2016day11;
 
-import java.util.*;
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Floor {
+import static com.google.common.base.Preconditions.checkNotNull;
 
-    public final List<Item> items;
+public final class Floor {
 
-    Floor(Stream<Item> items) {
-        this(items.collect(Collectors.toList()));
+    public final ImmutableSet<Item> items;
+
+    private Floor(Stream<Item> items) {
+        this(items.collect(Collectors.toSet()));
     }
 
-    public Floor(List<Item> items) {
-        this.items = Collections.unmodifiableList(items);
+    private Floor(Iterable<Item> items) {
+        this(ImmutableSet.copyOf(items));
     }
 
-    private static final Floor empty = new Floor(Collections.emptyList());
-
-    public static Floor empty() {
-        return empty;
+    private Floor(ImmutableSet<Item> items) {
+        this.items = checkNotNull(items);
     }
 
-    public static Floor with(List<Item> items) {
-        return items.isEmpty() ? empty() : new Floor(items);
+    public static abstract class Factory {
+
+        public abstract Floor get(Collection<Item> items);
+
+        public Floor empty() {
+            return get(ImmutableSet.of());
+        }
+
+        private static class Holder {
+            private static final Factory instance = new NewEachTimeFactory(); //new PrefabFactory();
+        }
+
+        public static Factory getInstance() {
+            return Holder.instance;
+        }
+    }
+
+    private static class NewEachTimeFactory extends Factory {
+
+        private final Floor empty = new Floor(ImmutableSet.of());
+
+        @Override
+        public Floor get(Collection<Item> items) {
+            return new Floor(items);
+        }
+
+        @Override
+        public Floor empty() {
+            return empty;
+        }
+    }
+
+    private static class PrefabFactory extends Factory {
+
+        private final ImmutableBiMap<Set<Item>, Floor> floors;
+
+        public PrefabFactory() {
+            floors = fabricate();
+        }
+
+        private static ImmutableBiMap<Set<Item>, Floor> fabricate() {
+            ImmutableBiMap.Builder<Set<Item>, Floor> b = ImmutableBiMap.builder();
+            Set<Item> allItems = Item.streamItems().collect(Collectors.toSet());
+            Set<Set<Item>> itemsPowerSet = Sets.powerSet(allItems); // 7 elements => 16384 different sets
+            for (Set<Item> set : itemsPowerSet) {
+                ImmutableSet<Item> immSet = ImmutableSet.copyOf(set);
+                Floor f = new Floor(immSet);
+                b.put(immSet, f);
+            }
+            return b.build();
+        }
+
+        @Override
+        public Floor get(Collection<Item> items) {
+            return floors.get(ImmutableSet.copyOf(items));
+        }
     }
 
     private Item findItemByPlacement(int placement) {
