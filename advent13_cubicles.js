@@ -3,7 +3,8 @@
  */
 
 var assert = require('assert');
-var logger = console.error;
+var logger = () => false; 
+// logger = console.error; // uncomment to be verbose
 
 function Point(x, y) {
     assert(typeof(x) === 'number' && typeof(y) === 'number', 'x and y must be numbers');
@@ -198,12 +199,12 @@ function doUnitTest() {
     }
 
     var numTests = 0;
-    function test(boardObj, start, destination, numMoves) {
+    function test(boardObj, start, destination, numMoves, maxMoves) {
         logger(++numTests, "test", boardObj.cells.length, start.toString(), destination.toString(), numMoves);
         var wallFilter = makeWallFilter(boardObj.cells, boardObj.numColumns);
         assert.equal(wallFilter(destination), true, "destination " + destination + " must not be a wall");
         var agentFactory = new AgentFactory(wallFilter);
-        var answer = findMinimumMoves(start, destination, agentFactory);
+        var answer = findMinimumMoves(start, destination, agentFactory, maxMoves);
         if (answer !== numMoves) {
             logger(boardObj.rendered);
             logger('start ' + start + ', destination = ' + destination + ', numMoves= ' + numMoves);
@@ -218,11 +219,15 @@ function doUnitTest() {
     }
 
     test(newBoard('.'), p(0, 0), p(0, 0), 0);
+    test(newBoard('.'), p(0, 0), p(0, 0), 0, 0);
     test(newBoard('..'), p(0, 0), p(1, 0), 1);
+    test(newBoard('..'), p(0, 0), p(1, 0), 1, 1);
     test(newBoard('..', '..'), p(0, 0), p(1, 1), 2);
     test(newBoard('.#', '..'), p(0, 0), p(1, 1), 2);
     test(newBoard('.#.',
                   '...'), p(0, 0), p(2, 0), 4);
+    test(newBoard('.#.',
+                  '...'), p(0, 0), p(2, 0), 4, 4);
     test(newBoard('..#.',
                   '#...'), p(0, 0), p(3, 0), 5);
     test(newBoard('..#.',
@@ -250,11 +255,45 @@ function doGivenTest() {
 }
 
 function doPartOne(favNumber, from, to){
+    logger("doPartOne");
     var agentFactory = new AgentFactory(p => !isWall(p, favNumber));
     var result = findMinimumMoves(from, to, agentFactory);
-    console.log(result);
+    console.log(result.toString() + " moves from " + from.toString() + " to " + to.toString());
 }
 
-// doUnitTest();
-// doGivenTest();
+function doPartTwo(favNumber, start, maxMoves) {
+    logger("doPartTwo");
+    function rectangle(corner1, corner2) {
+        var xMin = Math.min(corner1.x, corner2.x), yMin = Math.min(corner1.y, corner2.y);
+        var xMax = Math.max(corner1.x, corner2.x), yMax = Math.max(corner1.y, corner2.y);
+        var points = [];
+        for (var x = xMin; x <= xMax; x++) {
+            for (var y = yMin; y <= yMax; y++) {
+                points.push(new Point(x, y));
+            }
+        }
+        return points;
+    }
+    var c1 = new Point(start.x - maxMoves, start.y - maxMoves), c2 = new Point(start.x + maxMoves, start.y + maxMoves); 
+    var points = rectangle(c1, c2);
+    logger(points.length + " in rectangle from " + c1 + " to " + c2);
+    points = points.filter(p => start.taxicabDistanceTo(p) <= maxMoves)
+                    .filter(p => !isWall(p, favNumber));
+    logger("filtered to " + points.length + " destinations");
+    var numCanReach = 0;
+    points.forEach(p => {
+        var agentFactory = new AgentFactory(p => !isWall(p, favNumber));
+        var result = findMinimumMoves(start, p, agentFactory, maxMoves);
+        if (result >= 0) {
+            logger(++numCanReach, "can reach " + p.toString());
+        } else {
+            logger("can't reach " + p.toString() + " in max " + maxMoves + " moves");
+        }
+    });
+    console.log("from " + start.toString() + " " + numCanReach + " destinations are within " + maxMoves + " moves");
+}
+
+doUnitTest();
+doGivenTest();
 doPartOne(1364, new Point(1, 1), new Point(31, 39));
+doPartTwo(1364, new Point(1, 1), 50);
