@@ -216,9 +216,11 @@ function doGivenTest() {
     }
 }
 
-function doPartOne(favNumber, from, to, maxMoves){
+function doPartOne(favNumber, from, to){
+    var lowerBound = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+    var maxMoves = lowerBound * 2;
     var agentFactory = new AgentFactory(p => !isWall(p, favNumber));
-    var result = findMinimumMoves(from, to, agentFactory, maxMoves);
+    var result = findMinimumMoves(from, to, agentFactory, maxMoves, lowerBound);
     console.log(result);
 }
 
