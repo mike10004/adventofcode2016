@@ -249,12 +249,12 @@ function doGivenTest() {
     }
 }
 
-function doPartOne(favNumber, from, to, maxMoves){
+function doPartOne(favNumber, from, to){
     var agentFactory = new AgentFactory(p => !isWall(p, favNumber));
-    var result = findMinimumMoves(from, to, agentFactory, maxMoves);
+    var result = findMinimumMoves(from, to, agentFactory);
     console.log(result);
 }
 
 // doUnitTest();
 // doGivenTest();
-doPartOne(1364, new Point(1, 1), new Point(31, 39), 93);
+doPartOne(1364, new Point(1, 1), new Point(31, 39));
