@@ -5,7 +5,12 @@ import com.google.common.collect.ImmutableSet;
 
 import javax.annotation.Nullable;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -240,12 +245,7 @@ public final class Building {
     }
 
     public static Comparator<Building> moveNumberComparator() {
-        return new Comparator<Building>() {
-            @Override
-            public int compare(Building o1, Building o2) {
-                return o1.numMoves - o2.numMoves;
-            }
-        };
+        return Comparator.comparingInt(o -> o.numMoves);
     }
 
     public static int count(Collection<Building> moves) {
@@ -258,11 +258,6 @@ public final class Building {
             Args.check(ordered.get(i).numMoves == ordered.get(i - 1).numMoves + 1, "moves not consecutive: %s", ordered);
         }
         return ordered.stream().max(moveNumberComparator()).get().numMoves;
-//        if (ordered.get(0).numMoves == 0) {
-//            return ordered.size() - 1;
-//        } else {
-//            throw new IllegalArgumentException("expected moves collection include numMoves=[0..n], not " + ordered);
-//        }
     }
 
     public Stream<Item> items() {

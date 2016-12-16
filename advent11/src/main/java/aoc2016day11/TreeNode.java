@@ -615,9 +615,6 @@ public class TreeNode<T> implements Iterable<T>, Cloneable, Serializable
      * The length of the returned array gives the node's depth in the
      * tree.
      *
-     * @param aNode  the TreeNode to get the path for
-     * @param depth  an int giving the number of steps already taken towards
-     *        the root (on recursive calls), used to size the returned array
      */
     protected void addToPathToRoot(List<TreeNode<T>> pathToRoot) {
         pathToRoot.add(this);
@@ -1299,8 +1296,21 @@ public class TreeNode<T> implements Iterable<T>, Cloneable, Serializable
     private final static class PreorderEnumeration<E> implements Iterator<TreeNode<E>> {
         private final Stack<Iterator<TreeNode<E>>> stack = new Stack<>();
 
+        private final Function<TreeNode<E>, Iterator<TreeNode<E>>> childrenFunction;
+
+        protected static <T> Function<TreeNode<T>, Iterator<TreeNode<T>>> standardChildrenIterator() {
+            return treeNode -> {
+                return treeNode.children();
+            };
+        }
+
         public PreorderEnumeration(TreeNode<E> rootNode) {
+            this(rootNode, standardChildrenIterator());
+        }
+
+        public PreorderEnumeration(TreeNode<E> rootNode, Function<TreeNode<E>, Iterator<TreeNode<E>>> childrenFunction) {
             super();
+            this.childrenFunction = childrenFunction;
             List<TreeNode<E>> v = new ArrayList<>(1);
             v.add(rootNode);
             stack.push(v.iterator());
@@ -1375,6 +1385,7 @@ public class TreeNode<T> implements Iterable<T>, Cloneable, Serializable
 
 
     private static final class BreadthFirstEnumeration<E> implements Iterator<TreeNode<E>> {
+
         protected Queue<Iterator<TreeNode<E>>> queue;
 
         public BreadthFirstEnumeration(TreeNode<E> rootNode) {

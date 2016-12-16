@@ -38,12 +38,12 @@ public class BuildingTest {
 
     @Test
     public void dump() throws Exception {
-        Play.createExampleBuilding().dump(System.out);
+        Buildings.createExampleBuilding().dump(System.out);
     }
 
     @Test
     public void givenTestCase() throws Exception {
-        Building b = Play.createExampleBuilding();
+        Building b = Buildings.createExampleBuilding();
         Item HG = b.findItem(generator, hydrogen), HM = b.findItem(microchip, hydrogen);
         Item LG = b.findItem(generator, lithium), LM = b.findItem(microchip, lithium);
 /*
