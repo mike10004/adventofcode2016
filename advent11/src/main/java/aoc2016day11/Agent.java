@@ -13,7 +13,7 @@ public abstract class Agent {
 
     protected final int maxMoves;
     private boolean verbose;
-    private int attemptCountPrintInterval = 1000000;
+    private static int attemptCountPrintInterval = 1000000;
 
     public Agent(int maxMoves) {
         this.maxMoves = maxMoves;
@@ -49,7 +49,7 @@ public abstract class Agent {
     }
 
     @SuppressWarnings("SameParameterValue")
-    protected final void maybePrintAttempts(long attempts) {
+    protected static void maybePrintAttempts(long attempts) {
         if (attempts % attemptCountPrintInterval == 0) {
             System.out.format("%d attempts so far%n", attempts);
         }

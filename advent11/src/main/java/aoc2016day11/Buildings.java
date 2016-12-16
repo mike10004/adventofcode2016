@@ -3,13 +3,11 @@ package aoc2016day11;
 import java.util.EnumSet;
 import java.util.stream.Collectors;
 
-import static aoc2016day11.Element.hydrogen;
-import static aoc2016day11.Element.lithium;
-import static aoc2016day11.Element.plutonium;
-import static aoc2016day11.Element.promethium;
-import static aoc2016day11.Element.ruthenium;
-import static aoc2016day11.Element.strontium;
-import static aoc2016day11.Element.thulium;
+import static aoc2016day11.Element.P;
+import static aoc2016day11.Element.X;
+import static aoc2016day11.Element.R;
+import static aoc2016day11.Element.S;
+import static aoc2016day11.Element.T;
 import static aoc2016day11.Item.generator;
 import static aoc2016day11.Item.microchip;
 import static java.util.Arrays.asList;
@@ -62,7 +60,7 @@ F1 .  .  .  .  .
                 asList(
                         floorFactory.empty(),
                         floorFactory.empty(),
-                        floorFactory.get(Item.forElements(EnumSet.of(plutonium, promethium, ruthenium, strontium, thulium)).collect(Collectors.toSet())),
+                        floorFactory.get(EnumSet.allOf(Item.class)),
                         floorFactory.empty()
                 ));
         return b;
@@ -86,11 +84,11 @@ The fourth floor contains nothing relevant.
  */
     public static Building createPuzzleInputBuilding() {
         Floor.Factory floorFactory = Floor.Factory.getInstance();
-        Item PG = generator(plutonium), PM = microchip(plutonium);
-        Item XG = generator(promethium), XM = microchip(promethium);
-        Item RG = generator(ruthenium), RM = microchip(ruthenium);
-        Item SG = generator(strontium), SM = microchip(strontium);
-        Item TG = generator(thulium), TM = microchip(thulium);
+        Item PG = generator(P), PM = microchip(P);
+        Item XG = generator(X), XM = microchip(X);
+        Item RG = generator(R), RM = microchip(R);
+        Item SG = generator(S), SM = microchip(S);
+        Item TG = generator(T), TM = microchip(T);
 
         Building building = Building.onFirstFloor(asList(
                 floorFactory.get(asList(TG, TM, PG, SG)),
@@ -109,10 +107,10 @@ The fourth floor contains nothing relevant.
         The third floor contains a lithium generator.
         The fourth floor contains nothing relevant.
          */
-        Item hg = generator(hydrogen);
-        Item hm = microchip(hydrogen);
-        Item lg = generator(lithium);
-        Item lm = microchip(lithium);
+        Item hg = generator(P);
+        Item hm = microchip(P);
+        Item lg = generator(R);
+        Item lm = microchip(R);
         Floor.Factory ff = Floor.Factory.getInstance();
         return Building.onFirstFloor(asList(ff.get(asList(hm, lm)), ff.get(asList(hg)), ff.get(asList(lg)), ff.empty()));
     }

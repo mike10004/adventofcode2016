@@ -53,7 +53,7 @@ Breadth-First-Search(Graph, root):
                 Collections.reverse(path);
                 return path;
             }
-            List<Building> next = current.label.findValidMovesExcept(path).collect(Collectors.toList());
+            List<Building> next = current.label.findValidMovesExcept(path).perform().collect(Collectors.toList());
             for (Building child : next) {
                 queue.add(new Node(child, current));
             }

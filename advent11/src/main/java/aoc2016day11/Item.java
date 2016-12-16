@@ -3,81 +3,75 @@ package aoc2016day11;
 import com.google.common.collect.ImmutableSet;
 
 import javax.annotation.Nullable;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
+import static aoc2016day11.Element.P;
+import static aoc2016day11.Element.R;
+import static aoc2016day11.Element.S;
+import static aoc2016day11.Element.T;
+import static aoc2016day11.Element.X;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-public final class Item {
+public enum Item {
 
-    private static final AtomicInteger placements = new AtomicInteger(0);
+    PG(P, Kind.generator),
+    PM(P, Kind.microchip),
+    XG(X, Kind.generator),
+    XM(X, Kind.microchip),
+    RG(R, Kind.generator),
+    RM(R, Kind.microchip),
+    SG(S, Kind.generator),
+    SM(S, Kind.microchip),
+    TG(T, Kind.generator),
+    TM(T, Kind.microchip);
 
     public final Kind kind;
     public final Element element;
     public final int placement;
-    private final int hashCode;
 
-    private Item(Kind kind, Element element, int hashCode) {
+    Item(Element element, Kind kind) {
         this.kind = Objects.requireNonNull(kind);
         this.element = Objects.requireNonNull(element);
-        this.placement = placements.getAndIncrement();
-        this.hashCode = hashCode;
+        this.placement = ordinal();
     }
 
     public static Item fromCode(String code) {
-        Element element = Element.fromSymbol(code.substring(0, 1));
-        Kind kind;
-        if ('G' == code.charAt(1)) {
-            kind = Kind.generator;
-        } else if ('M' == code.charAt(1)) {
-            kind = Kind.microchip;
-        } else {
-            throw new IllegalArgumentException(code);
-        }
-        return Item.of(kind, element);
+        return valueOf(code);
     }
 
-    private static Item[] microchips = new Item[Element.VALUES.size()];
-    private static Item[] generators = new Item[Element.VALUES.size()];
-
-    static {
-        for (int i = 0; i < Element.VALUES.size(); i++) {
-            Element element = Element.VALUES.get(i);
-            checkState(element.ordinal() == i);
-            microchips[i] = new Item(Kind.microchip, element, i + 1);
-            generators[i] = new Item(Kind.generator, element, Element.VALUES.size() + i + 1);
-        }
-    }
+    private static final Item[] values = values();
 
     public static int getNumItems() {
-        return microchips.length + generators.length;
+        return values.length;
     }
 
     public static Stream<Item> streamItems() {
-        return Stream.concat(Stream.of(microchips), Stream.of(generators));
-    }
-
-    public static Stream<Item> forElements(Set<Element> elements) {
-        Stream<Item> items = Stream.concat(Stream.of(microchips), Stream.of(generators));
-        return items.filter(x -> elements.contains(x.element));
+        return Stream.of(values);
     }
 
     public static Item of(Kind kind, Element element) {
         Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(element, "element");
-        int index = element.ordinal();
-        return kind == Kind.generator ? generators[index] : microchips[index];
+        return values[element.ordinal() * 2 + kind.ordinal()];
     }
 
-    public static void removeOrDie(Item item, Collection<Item> items) {
-        boolean removed = items.remove(item);
-        if (!removed) {
-            throw new IllegalArgumentException("tried to remove item " + item + " not in list " + items);
+    public static ImmutableSet<Item> removeFrom(Set<Item> subset, Set<Item> superset) {
+        ImmutableSet.Builder<Item> filtered = ImmutableSet.builder();
+        int n = 0;
+        for (Item other : superset) {
+            if (!subset.contains(other)) {
+                filtered.add(other);
+                n++;
+            }
         }
+        checkArgument(n == (superset.size() - subset.size()), "unexpected result set size %s should be %s - %s", n, superset.size(), subset.size());
+        return filtered.build();
     }
 
     public static Item microchip(Element element) {
@@ -88,18 +82,8 @@ public final class Item {
         return of(Kind.generator, element);
     }
 
-    @Override
-    public int hashCode() {
-        return hashCode;
-    }
-
     public String toString() {
         return element.symbol + kind.symbol;
-    }
-
-    public boolean isSafeWith(Item other) {
-        checkArgument(!equals(other), "checking safety on self: %s", this);
-        return isSafeWith(Collections.singletonList(other));
     }
 
     public boolean isMicrochip() {
@@ -110,45 +94,63 @@ public final class Item {
         return kind == Kind.generator;
     }
 
-
-    public static boolean areSafe(Stream<Item> items) {
-        List<Item> itemList = items.collect(Collectors.toList());
-        return areSafe(itemList);
-    }
-
-    public static boolean areSafe(Collection<Item> itemList) {
-        for (Item item : itemList) {
-            Stream<Item> others = itemList.stream().filter(Predicate.isEqual(item).negate());
-            if (!item.isSafeWith(others)) {
+    public static boolean areSafe(Set<Item> itemList) {
+        if (itemList.isEmpty() || itemList.size() == 1) {
+            return true;
+        }
+        Item[] items = itemList.toArray(new Item[itemList.size()]);
+        for (int i = 0; i < items.length; i++) {
+            if (!isProtectedFromOthers(items, i)) {
                 return false;
             }
         }
         return true;
     }
 
-    public boolean isSafeWith(Stream<Item> items) {
-        List<Item> itemList = items.collect(Collectors.toList());
-        return isSafeWith(itemList);
+    private static boolean hasGenerator(Collection<Item> items, Element element) {
+        for (Item item : items) {
+            if (item.isGenerator() && element == item.element) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasGenerator(Item[] items, Element element) {
+        return has(items, Kind.generator, element);
+    }
+
+    private static boolean has(Item[] items, Kind kind, Element element) {
+        for (Item item : items) {
+            if (item.kind == kind && element == item.element) {
+                return true;
+            }
+
+        }
+        return false;
+    }
+    private static boolean isProtectedFromOthers(Collection<Item> items, Item q) {
+//        return  q.isGenerator() || hasGenerator(items, q.element);
+        throw new UnsupportedOperationException();
+    }
+
+    private static boolean hasAnyOtherGenerator(Item[] items, Element element) {
+        for (Item item : items) {
+            if (item.isGenerator() && element != item.element) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isProtectedFromOthers(Item[] items, int k) {
+        Item q = items[k];
+        return q.isGenerator() || (!hasAnyOtherGenerator(items, q.element) || hasGenerator(items, q.element));
     }
 
     static @Nullable Item maybeFindItem(Stream<Item> items, Kind kind, Element element) {
-        return items.filter(x -> x.kind == kind && x.element == element).findFirst().orElse(null);
-    }
-
-    static boolean has(Stream<Item> items, Kind kind, Element element) {
-        return maybeFindItem(items, kind, element) != null;
-    }
-
-    public boolean isSafeWith(Collection<Item> itemList) {
-        if (kind == Kind.generator) {
-            Stream<Item> microchipsOfOtherElements = itemList.stream()
-                    .filter(Item::isMicrochip).filter(m -> m.element != element);
-            return microchipsOfOtherElements.allMatch(m -> has(itemList.stream(), Kind.generator, m.element));
-        } else {
-            assert kind == Kind.microchip;
-            return itemList.stream().filter(Item::isGenerator).anyMatch(g -> g.element == element)
-                || itemList.stream().filter(Item::isGenerator).noneMatch(g -> g.element != element);
-        }
+        return items.filter(x -> x.kind == kind && x.element == element)
+                .findFirst().orElse(null);
     }
 
     /**
@@ -156,20 +158,20 @@ public final class Item {
      * list in the returned stream has length 2.
      * @return all pairs of the given items
      */
-    public static Stream<ImmutableSet<Item>> pairs(Set<Item> all) {
+    public static ImmutableSet<ImmutableSet<Item>> pairs(ImmutableSet<Item> all) {
         if (all.size() < 2) {
-            return Stream.empty();
+            return ImmutableSet.of();
         }
         List<Item> copy = new ArrayList<>(all);
         if (all.size() == 2) {
-            return Stream.of(ImmutableSet.copyOf(all));
+            return ImmutableSet.of((all));
         }
-        List<ImmutableSet<Item>> pairs = new ArrayList<>();
+        ImmutableSet.Builder<ImmutableSet<Item>> pairs = ImmutableSet.builder();
         for (int i = 0; i < copy.size(); i++) {
             for (int j = i + 1; j < copy.size(); j++) {
                 pairs.add(ImmutableSet.of(copy.get(i), copy.get(j)));
             }
         }
-        return pairs.stream();
+        return pairs.build();
     }
 }

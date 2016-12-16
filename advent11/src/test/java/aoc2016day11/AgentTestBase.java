@@ -2,14 +2,53 @@ package aoc2016day11;
 
 import org.junit.Assert;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AgentTestBase {
 
+    protected static class Builder {
+        private final Floor.Factory ff = Floor.Factory.getInstance();
+        private List<Floor> floors = new ArrayList<>();
+        private int elevatorPosition = 0;
+
+        private Builder() {
+
+        }
+
+        public Builder(Floor first) {
+            floors.add(first);
+        }
+
+        public Builder on(String...items) {
+            then(items);
+            elevatorPosition = floors.size() - 1;
+            return this;
+        }
+        public Builder then(String...items) {
+            Floor f = ff.get(items);
+            checkArgument(Item.areSafe(f.items));
+            floors.add(f);
+            return this;
+        }
+
+        public Builder empty() {
+            floors.add(ff.get());
+            return this;
+        }
+        public Building finish() {
+            return new Building(elevatorPosition, floors);
+        }
+    }
+
+    protected Builder build(String...items) {
+        return new Builder().then(items);
+    }
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     protected void testPlayExample(Agent agent) {
         Building exampleBuilding = Buildings.createExampleBuilding();

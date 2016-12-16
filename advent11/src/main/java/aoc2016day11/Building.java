@@ -2,16 +2,19 @@ package aoc2016day11;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
 
 import javax.annotation.Nullable;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -51,11 +54,11 @@ public final class Building {
         return x -> !collection.contains(x);
     }
 
-    private static <E> List<E> concat(Collection<E> first, Collection<E> other) {
-        List<E> catted = new ArrayList<>(first.size() + other.size());
-        catted.addAll(first);
-        catted.addAll(other);
-        return catted;
+    private static <E> Set<E> concat(Collection<E> first, Collection<E> other) {
+        ImmutableSet.Builder<E> b = ImmutableSet.builder();
+        b.addAll(first);
+        b.addAll(other);
+        return b.build();
     }
 
     public boolean isEverythingAtTopFloor() {
@@ -93,11 +96,11 @@ public final class Building {
     }
 
 
-    public @Nullable Building moveElevator(Direction direction, Collection<Item> items) {
+    public @Nullable Building moveElevator(Direction direction, Set<Item> items) {
         return move(direction, items).building;
     }
 
-    Building moveChecked(Direction direction, Collection<Item> items) {
+    Building moveChecked(Direction direction, Set<Item> items) {
         MoveResult result = move(direction, items);
         if (!result.isValid()) {
             throw new IllegalStateException(result.reason);
@@ -105,38 +108,35 @@ public final class Building {
         return result.building;
     }
 
-    private static <E> List<E> toList(Collection<E> collection) {
-        return collection instanceof List ? (List<E>) collection : new ArrayList<>(collection);
+    private static <E> Set<E> toSet(Collection<E> collection) {
+        return collection instanceof Set ? (Set<E>) collection : ImmutableSet.copyOf(collection);
     }
 
-    private MoveResult move(Direction direction, Collection<Item> itemCollection) {
+    private MoveResult move(Direction direction, Set<Item> itemCollection) {
         checkArgument(itemCollection.size() == 1 || itemCollection.size() == 2, "can't move %s items ", itemCollection.size());
         checkArgument(direction != null, "direction must be nonnull");
-        List<Item> items = toList(itemCollection);
-        checkArgument(items.size() == 1 || items.get(0).isSafeWith(items.get(1)), "item combo unsafe: %s", items);
+        Set<Item> items = toSet(itemCollection);
+        checkArgument(items.size() == 1 || Item.areSafe(items), "item combo unsafe: %s", items);
         int newPos = elevatorPosition + direction.offset();
         if (newPos < 0 || newPos >= floors.size()) {
             return MoveResult.invalid(direction + " floor out of range: " + newPos);
         }
         Floor current = floors.get(elevatorPosition);
-        List<Item> currentItems = new ArrayList<>(current.items);
-        for (Item item : items) {
-            Item.removeOrDie(item, currentItems);
-        }
-        if (!Item.areSafe(currentItems.stream())) {
+        Set<Item> currentItems = Item.removeFrom(items, current.items);
+        if (!Item.areSafe(currentItems)) {
             return MoveResult.invalid("would leave unsafe combo of items on current floor " + elevatorPosition + ": " + currentItems);
         }
         Floor next = floors.get(newPos);
-        List<Item> nextItems = concat(next.items, items);
-        if (!Item.areSafe(nextItems.stream())) {
-            return MoveResult.invalid("would create unsafe combo of items on next floor " + newPos + ": " + nextItems);
+        Set<Item> itemsOnNextFloor = concat(next.items, items);
+        if (!Item.areSafe(itemsOnNextFloor)) {
+            return MoveResult.invalid("would create unsafe combo of items on next floor " + newPos + ": " + itemsOnNextFloor);
         }
         List<Floor> newBuildingFloors = repeat(null, floors.size());
         for (int i = 0; i < floors.size(); i++) {
             if (i == elevatorPosition) {
                 newBuildingFloors.set(i, floorFactory.get(currentItems));
             } else if (i == newPos) {
-                newBuildingFloors.set(i, floorFactory.get(nextItems));
+                newBuildingFloors.set(i, floorFactory.get(itemsOnNextFloor));
             } else {
                 newBuildingFloors.set(i, floors.get(i));
             }
@@ -163,57 +163,291 @@ public final class Building {
         }
         return false;
     }
+//
+//    private Stream<Building> toMoves(Direction direction, Stream<ImmutableSet<Item>> carryables, Collection<Building> prohibited) {
+//        checkArgument(direction != null, "direction must be nonnull");
+//        return carryables
+//                 .map(items -> move(direction, items))
+//                .filter(MoveResult::isValid)
+//                .map(result -> result.building)
+//                .filter(next -> !prohibited.contains(next));
+//    }
 
-    private Stream<Building> toMoves(Direction direction, Stream<ImmutableSet<Item>> carryables, Collection<Building> prohibited) {
-        checkArgument(direction != null, "direction must be nonnull");
-        return carryables
-                 .map(items -> move(direction, items))
-                .filter(MoveResult::isValid)
-                .map(result -> result.building)
-                .filter(next -> !prohibited.contains(next));
-    }
-
-    public static final class Move {
+    public static class Move {
+        public final Building from;
         public final Direction direction;
         public final ImmutableSet<Item> carrying;
-
-        public Move(Direction direction, Collection<Item> carrying) {
+        public Move(Building from, Direction direction, Collection<Item> carrying) {
+            this.from = Objects.requireNonNull(from);
             this.direction = Objects.requireNonNull(direction);
             this.carrying = ImmutableSet.copyOf(carrying);
         }
 
         public String toString() {
-            return direction + " with " + carrying;
+            return direction.toString().toLowerCase() + carrying.toString();
         }
 
-        public MoveResult perform(Building from) {
-            return from.move(direction, carrying);
+        public MoveResult perform() {
+            MoveResult result = from.move(direction, carrying);
+            return result;
         }
     }
 
     private List<ImmutableSet<Item>> listCarryables() {
         Floor current = floors.get(elevatorPosition);
-        Stream<ImmutableSet<Item>> pairs = Item.pairs(current.items).filter(Item::areSafe);
+        Stream<ImmutableSet<Item>> pairs = Item.pairs(current.items)
+                .stream().filter(Item::areSafe);
         Stream<ImmutableSet<Item>> singletons = current.items.stream().map(ImmutableSet::of);
         List<ImmutableSet<Item>> carryables = Stream.concat(singletons, pairs)
                 .collect(Collectors.toList());
         return carryables;
     }
 
-    public Stream<Move> listValidMoves() {
+    public Stream<Move> listValidMoves(Collection<Building> prohibited) {
         List<ImmutableSet<Item>> carryables = listCarryables();
-        Predicate<Move> valid = m -> move(m.direction, m.carrying).isValid();
-        Stream<Move> upMoves = carryables.stream().map(c -> new Move(Direction.UP, c)).filter(valid);
-        Stream<Move> downMoves = carryables.stream().map(c -> new Move(Direction.DOWN, c)).filter(valid);
+        Predicate<Move> valid = m -> {
+            MoveResult result = move(m.direction, m.carrying);
+            return result.isValid() && !prohibited.contains(result.building);
+        };
+        Stream<Move> upMoves = carryables.stream().map(c -> new Move(this, Direction.UP, c)).filter(valid);
+        Stream<Move> downMoves = carryables.stream().map(c -> new Move(this, Direction.DOWN, c)).filter(valid);
         return Stream.concat(upMoves, downMoves);
     }
 
-    public Stream<Building> findValidMovesExcept(Collection<Building> prohibited) {
-        List<ImmutableSet<Item>> carryables = listCarryables();
-        Stream<Building> upMoves = toMoves(Direction.UP, carryables.stream(), prohibited);
-        Stream<Building> downMoves = toMoves(Direction.DOWN, carryables.stream(), prohibited);
-        Stream<Building> allMoves = Stream.concat(upMoves, downMoves);
-        return allMoves;
+    private static boolean isSameElement(Set<Item> items) {
+        if (items.isEmpty() || items.size() == 1) {
+            return true;
+        }
+        Iterator<Item> it = items.iterator();
+        Element element = it.next().element;
+        while (it.hasNext()) {
+            if (element != it.next().element) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isMoveChipAndGenOfSameElement(Move move) {
+        Set<Item> items = move.carrying;
+        return items.size() == 2 && isSameElement(items);
+    }
+
+    private static <E, C> ImmutableSetMultimap<C, E> partition(Set<E> superset, Function<E, C> classifier) {
+        ImmutableSetMultimap.Builder<C, E> b = ImmutableSetMultimap.builder();
+        for (E element : superset) {
+            C eqClass = classifier.apply(element);
+            b.put(eqClass, element);
+        }
+        return b.build();
+    }
+
+    private abstract static class MoveClassifier implements Predicate<Move> {
+
+        private final int numItems;
+
+        public MoveClassifier(int numItems) {
+            this.numItems = numItems;
+        }
+
+        @Override
+        public boolean test(Move move) {
+            if (move.carrying.size() != numItems) {
+                return false;
+            }
+            Floor destination = move.from.floors.get(move.from.elevatorPosition + move.direction.offset());
+            return test(move.carrying, destination);
+        }
+
+        protected abstract boolean test(Set<Item> items, Floor destination);
+
+        protected boolean test(Item item, Kind kind, Floor destination, boolean hasCounterpart) {
+            return item.kind == kind && hasCounterpart == destination.items.contains(Item.of(kind.other(), item.element));
+        }
+    }
+
+    private static abstract class OneMoveClassifier extends MoveClassifier {
+
+        private final Kind kind;
+        private final boolean hasCounterpart;
+
+        public OneMoveClassifier(Kind kind, boolean hasCounterpart) {
+            super(1);
+            this.kind = kind;
+            this.hasCounterpart = hasCounterpart;
+        }
+
+        @Override
+        protected boolean test(Set<Item> items, Floor destination) {
+            return test(items.iterator().next(), destination);
+        }
+
+        protected boolean test(Item item, Floor destination) {
+            return test(item, kind, destination, hasCounterpart);
+        }
+    }
+
+    private static abstract class TwoMoveClassifier extends MoveClassifier {
+
+        public TwoMoveClassifier() {
+            super(2);
+        }
+
+        @Override
+        protected boolean test(Set<Item> items, Floor destination) {
+            Iterator<Item> it = items.iterator();
+            Item a = it.next(), b = it.next();
+            if (!isCorrectKinds(a, b)) {
+                return false;
+            }
+            return evaluateFirst(a, b) && evaluateSecond(a, b);
+        }
+
+        protected abstract boolean isCorrectKinds(Item a, Item b);
+        protected abstract boolean evaluateFirst(Item a, Item b, Floor destination);
+        protected abstract boolean evaluateSecond(Item a, Item b);
+    }
+
+    private static abstract class HomoTwoMoveClassifier extends TwoMoveClassifier {
+
+        private final Kind kind;
+
+        protected HomoTwoMoveClassifier(Kind kind) {
+            this.kind = kind;
+        }
+
+        @Override
+        protected boolean isCorrectKinds(Item a, Item b) {
+            return a.kind == kind && b.kind == kind;
+        }
+    }
+
+    private static abstract class HeteroTwoMoveClassifier extends TwoMoveClassifier {
+        @Override
+        protected boolean isCorrectKinds(Item a, Item b) {
+            return a.kind != b.kind;
+        }
+
+        protected abstract boolean evaluateMicrochip(Item )
+    }
+
+    private enum MoveClass {
+        unknown,
+        chipAndGenOfSameElement,
+        MoveMicrochipAloneToFloorWithItsGenerator,
+        MoveMicrochipAloneToFloorWithoutItsGenerator,
+        MoveTwoMicrochipsToFloorWithBothTheirGenerators,
+        MoveTwoMicrochipsToFloorWithoutTheirGenerators,
+        MoveGeneratorAloneToFloorWithItsMicrochip,
+        MoveGeneratorAloneToFloorWithoutItsMicrochip,
+        MoveTwoGeneratorsToFloorWithTheirMicrochips,
+        MoveTwoGeneratorsToFloorWithoutTheirMicrochips;
+
+        public static MoveClass[] known = { chipAndGenOfSameElement,
+                MoveMicrochipAloneToFloorWithItsGenerator,
+                MoveMicrochipAloneToFloorWithoutItsGenerator,
+                MoveTwoMicrochipsToFloorWithBothTheirGenerators,
+                MoveTwoMicrochipsToFloorWithoutTheirGenerators,
+                MoveGeneratorAloneToFloorWithItsMicrochip,
+                MoveGeneratorAloneToFloorWithoutItsMicrochip,
+                MoveTwoGeneratorsToFloorWithTheirMicrochips,
+                MoveTwoGeneratorsToFloorWithoutTheirMicrochips
+        };
+    }
+
+    private boolean floorHas(int floor, Kind kind, Element element) {
+        return floors.get(floor).items.contains(Item.of(kind, element));
+    }
+
+    private boolean isMoveItemAloneToFloorWithCounterpart(Move move, Kind kind, boolean hasGenerator) {
+        if (move.carrying.size() == 1) {
+            Item item = move.carrying.iterator().next();
+            if (item.kind == kind) {
+                return hasGenerator == floorHas(elevatorPosition + move.direction.offset(), kind.other(), item.element);
+            }
+        }
+        return false;
+    }
+
+    private boolean isMoveTwoItemsToFloorWithTheirCounterparts(Move move, Kind kind, boolean hasCounterpart) {
+        if (move.carrying.size() == 2) {
+            Iterator<Item> items = move.carrying.iterator();
+            Item a = items.next(), b = items.next();
+            return a.kind == kind && b.kind == kind
+                    && hasCounterpart == floorHas(elevatorPosition + move.direction.offset(), kind.other(), a.element)
+                    && hasCounterpart == floorHas(elevatorPosition + move.direction.offset(), kind.other(), b.element);
+        }
+        return false;
+    }
+
+    private Function<Move, MoveClass> partitionClassifier() {
+        return new Function<Move, MoveClass>() {
+            @Override
+            public MoveClass apply(Move move) {
+                if (isMoveChipAndGenOfSameElement(move)) {
+                    return MoveClass.chipAndGenOfSameElement;
+                }
+                if (isMoveItemAloneToFloorWithCounterpart(move, Kind.microchip, true)) {
+                    return MoveClass.MoveMicrochipAloneToFloorWithItsGenerator;
+                }
+                if (isMoveItemAloneToFloorWithCounterpart(move, Kind.microchip, false)) {
+                    return MoveClass.MoveMicrochipAloneToFloorWithoutItsGenerator;
+                }
+                if (isMoveItemAloneToFloorWithCounterpart(move, Kind.generator, true)) {
+                    return MoveClass.MoveGeneratorAloneToFloorWithItsMicrochip;
+                }
+                if (isMoveItemAloneToFloorWithCounterpart(move, Kind.generator, false)) {
+                    return MoveClass.MoveGeneratorAloneToFloorWithoutItsMicrochip;
+                }
+                if (isMoveTwoItemsToFloorWithTheirCounterparts(move, Kind.microchip, true)) {
+                    return MoveClass.MoveTwoMicrochipsToFloorWithBothTheirGenerators;
+                }
+                if (isMoveTwoItemsToFloorWithTheirCounterparts(move, Kind.microchip, false)) {
+                    return MoveClass.MoveTwoMicrochipsToFloorWithoutTheirGenerators;
+                }
+                if (isMoveTwoItemsToFloorWithTheirCounterparts(move, Kind.generator, true)) {
+                    return MoveClass.MoveTwoGeneratorsToFloorWithTheirMicrochips;
+                }
+                if (isMoveTwoItemsToFloorWithTheirCounterparts(move, Kind.generator, false)) {
+                    return MoveClass.MoveTwoGeneratorsToFloorWithoutTheirMicrochips;
+                }
+                return MoveClass.unknown;
+            }
+        };
+    }
+
+    public MoveStream findValidMovesExcept(Collection<Building> prohibited) {
+        Set<Move> allValidMovesList = listValidMoves(prohibited).collect(Collectors.toSet());
+        ImmutableSetMultimap<MoveClass, Move> mm = partition(allValidMovesList, partitionClassifier());
+        Stream<Move> moveSt = mm.get(MoveClass.unknown).stream();
+        for (MoveClass mc : MoveClass.known) {
+            Set<Move> others = mm.get(mc);
+            if (!others.isEmpty()) {
+                moveSt = Stream.concat(moveSt, others.stream().limit(1));
+            }
+        }
+        return new MoveStream(moveSt);
+    }
+
+    public class MoveStream extends DelegatingStream<Move> {
+
+        public MoveStream(Stream<Move> inner) {
+            super(inner);
+        }
+
+        public Stream<Building> perform() {
+            return stream.map(m -> m.perform(Building.this)).filter(MoveResult::isValid).map(mr -> mr.building);
+        }
+    }
+
+    private Stream<Move> filterEquivalenceClass(List<Move> moves, Predicate<Move> predicate) {
+        if (moves.stream().filter(predicate).count() > 1) {
+            Stream<Move> without = moves.stream().filter(predicate.negate());
+            Stream<Move> only = moves.stream().filter(predicate);
+            return Stream.concat(without, only.limit(1));
+        } else {
+            return moves.stream();
+        }
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -226,10 +460,9 @@ public final class Building {
     }
 
     public PrintStream dump(PrintStream out) {
-        int maxPlacement = items().map(x -> x.placement).max(Integer::compare).orElse(0);
         for (int i = floors.size() - 1; i >= 0; i--) {
             String label = String.valueOf(i + 1);
-            out.format("F%s %s %s%n", label, i == elevatorPosition ? "E " : ". ", floors.get(i).toString(maxPlacement));
+            out.format("F%s %s %s%n", label, i == elevatorPosition ? "E " : ". ", floors.get(i).toString());
         }
         return out;
     }
@@ -259,19 +492,13 @@ public final class Building {
         for (int i = 1; i < ordered.size(); i++) {
             checkArgument(ordered.get(i).numMoves == ordered.get(i - 1).numMoves + 1, "moves not consecutive: %s", ordered);
         }
-        return ordered.stream().max(moveNumberComparator()).get().numMoves;
+
+        return ordered.stream().max(moveNumberComparator())
+                .orElseThrow(IllegalStateException::new).numMoves;
     }
 
     public Stream<Item> items() {
         return floors.stream().flatMap(f -> f.items.stream());
-    }
-
-    public Item findItem(Kind kind, Element element) {
-        @Nullable Item item = Item.maybeFindItem(items(), kind, element);
-        if (item == null) {
-            throw new NoSuchElementException(element.symbol + " " + kind.symbol);
-        }
-        return item;
     }
 
     @Override

@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,11 +21,11 @@ import java.util.stream.Collectors;
 public class Play {
 
     public static void main(String[] args) throws Exception {
-        Building b = Buildings.createExampleBuilding();
+        Building b = Buildings.createBuildingWith4FloorsAndEverythingOnThirdFloor();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             while (!b.isWin()) {
                 b.dump(System.out).println();
-                List<Move> moves = b.listValidMoves().collect(Collectors.toList());
+                List<Move> moves = b.listValidMoves(Collections.emptySet()).collect(Collectors.toList());
                 if (moves.isEmpty()) {
                     System.out.println("game over: no valid moves");
                     break;

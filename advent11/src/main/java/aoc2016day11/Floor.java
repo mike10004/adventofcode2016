@@ -101,10 +101,7 @@ public final class Floor {
 
     @Override
     public String toString() {
-        return toString(Item.getNumItems());
-    }
-
-    public String toString(int maxPlacement) {
+        final int maxPlacement = Item.getNumItems();
         StringBuilder b = new StringBuilder(128);
         int numPrinted = 0;
         for (int pl = 0; pl <= maxPlacement; pl++) {

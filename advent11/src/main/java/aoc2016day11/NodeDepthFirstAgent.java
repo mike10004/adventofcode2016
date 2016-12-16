@@ -16,7 +16,10 @@ public class NodeDepthFirstAgent extends Agent {
         return Optional.ofNullable(play(Node.root(start), maxMoves));
     }
 
+    private static long attemptCount = 0;
+
     private static List<Building> play(Node from, int maxMoves) {
+        maybePrintAttempts(++attemptCount);
         List<Building> path = from.path();
         if (from.label.isWin()) {
             Collections.reverse(path);
@@ -26,9 +29,19 @@ public class NodeDepthFirstAgent extends Agent {
             return null;
         }
         Optional<List<Building>> search = from.label.findValidMovesExcept(path)
+                .perform()
                 .map(b -> new Node(b, from))
                 .map(n -> play(n, maxMoves))
                 .filter(Objects::nonNull).findFirst();
         return search.orElse(null);
     }
+
+    public static void main(String[] args) {
+        Building building = Buildings.createPuzzleInputBuilding();
+        Agent agent = new NodeDepthFirstAgent(32) {
+
+        }.toggleVerbose();
+        attempt(agent, building);
+    }
+
 }

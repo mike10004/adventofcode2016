@@ -2,15 +2,20 @@ package aoc2016day11;
 
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static aoc2016day11.Direction.DOWN;
 import static aoc2016day11.Direction.UP;
-import static aoc2016day11.Element.hydrogen;
-import static aoc2016day11.Element.lithium;
-import static aoc2016day11.Element.strontium;
+import static aoc2016day11.Element.P;
+import static aoc2016day11.Element.R;
+import static aoc2016day11.Element.S;
 import static aoc2016day11.Item.generator;
 import static aoc2016day11.Kind.generator;
 import static aoc2016day11.Kind.microchip;
@@ -24,16 +29,16 @@ public class BuildingTest {
 
     @Test
     public void isEverythingAtTopFloor() throws Exception {
-        assertTrue(building(0, floor(generator(strontium))).isEverythingAtTopFloor());
-        assertTrue(building(2, floor(), floor(), floor(generator(strontium))).isEverythingAtTopFloor());
-        assertFalse(building(1, floor(), floor(generator(strontium)), floor()).isEverythingAtTopFloor());
+        assertTrue(building(0, floor(generator(S))).isEverythingAtTopFloor());
+        assertTrue(building(2, floor(), floor(), floor(generator(S))).isEverythingAtTopFloor());
+        assertFalse(building(1, floor(), floor(generator(S)), floor()).isEverythingAtTopFloor());
     }
 
     @Test
     public void isElevatorAtTop() throws Exception {
-        assertTrue(building(0, floor(generator(strontium))).isElevatorAtTop());
-        assertTrue(building(1, floor(), floor(generator(strontium))).isElevatorAtTop());
-        assertFalse(building(0, floor(generator(strontium)), floor()).isElevatorAtTop());
+        assertTrue(building(0, floor(generator(S))).isElevatorAtTop());
+        assertTrue(building(1, floor(), floor(generator(S))).isElevatorAtTop());
+        assertFalse(building(0, floor(generator(S)), floor()).isElevatorAtTop());
     }
 
     @Test
@@ -41,11 +46,18 @@ public class BuildingTest {
         Buildings.createExampleBuilding().dump(System.out);
     }
 
+    private static Item findItem(Building b, Kind kind, Element element) {
+        @Nullable Item item = Item.maybeFindItem(b.items(), kind, element);
+        if (item == null) {
+            throw new NoSuchElementException(element.symbol + " " + kind.symbol);
+        }
+        return item;
+    }
     @Test
     public void givenTestCase() throws Exception {
         Building b = Buildings.createExampleBuilding();
-        Item HG = b.findItem(generator, hydrogen), HM = b.findItem(microchip, hydrogen);
-        Item LG = b.findItem(generator, lithium), LM = b.findItem(microchip, lithium);
+        Item HG = findItem(b, generator, P), HM = findItem(b, microchip, P);
+        Item LG = findItem(b, generator, R), LM = findItem(b, microchip, R);
 /*
 1. Bring the Hydrogen-compatible Microchip to the second floor
 2. Bring both Hydrogen-related items to the third floor
@@ -95,12 +107,24 @@ public class BuildingTest {
         System.out.println();
     }
 
-    private static <E> List<E> asList(E e) {
-        return Collections.singletonList(e);
+    @Test
+    public void equivalence() {
+        Building b = Building.onFirstFloor(Arrays.asList(
+                floor(Item.PG, Item.PM, Item.SG, Item.SM),
+                floor()
+        ));
+        Building.MoveStream moves = b.findValidMovesExcept(Collections.emptyList());
+        List<Building.Move> moveList = moves.collect(Collectors.toList());
+        System.out.format("%d moves: %s%n", moveList.size(), moveList);
+        assertEquals("num moves", 4, moveList.size());
     }
 
-    private static <E> List<E> asList(E e1, E e2) {
-        return Arrays.asList(e1, e2);
+    private static <E> Set<E> asList(E e) {
+        return Collections.singleton(e);
+    }
+
+    private static <E extends Enum<E>> Set<E> asList(E e1, E e2) {
+        return EnumSet.of(e1, e2);
     }
 
     private static Building building(int elevatorPosition, Floor...floors) {
