@@ -11,20 +11,7 @@ import static org.junit.Assert.*;
 public class ItemTest {
 
     private static Item c(String code) {
-        return fromCode(code);
-    }
-
-    private static Item fromCode(String code) {
-        Element element = Element.fromSymbol(code.substring(0, 1));
-        Kind kind;
-        if ('G' == code.charAt(1)) {
-            kind = Kind.generator;
-        } else if ('M' == code.charAt(1)) {
-            kind = Kind.microchip;
-        } else {
-            throw new IllegalArgumentException(code);
-        }
-        return Item.of(kind, element);
+        return Item.fromCode(code);
     }
 
     private List<Item> allItems() {

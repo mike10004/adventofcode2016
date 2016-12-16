@@ -14,9 +14,47 @@ import static aoc2016day11.Item.generator;
 import static aoc2016day11.Item.microchip;
 import static java.util.Arrays.asList;
 
+@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class Buildings {
 
     private Buildings() {}
+
+    public static Building oneMoveFromWinning() {
+        Floor.Factory ff = Floor.Factory.getInstance();
+        Building b = new Building(1, asList(
+                ff.empty(),
+                ff.get("TM"),
+                ff.get("TG", "SG", "SM")
+        ));
+        return b;
+    }
+
+    public static Building twoMovesFromWinning() {
+        Floor.Factory ff = Floor.Factory.getInstance();
+        Building b = new Building(2, asList(
+                ff.empty(),
+                ff.get("TM"),
+                ff.get("TG", "SG", "SM")
+        ));
+        return b;
+    }
+
+/*
+F4 .  .  .  .  LM
+F3 E  HG HM LG .
+F2 .  .  .  .  .
+F1 .  .  .  .  .
+ */
+    public static Building threeMovesFromWinning() {
+        Floor.Factory ff = Floor.Factory.getInstance();
+        Building b = new Building(2, asList(
+                ff.empty(),
+                ff.empty(),
+                ff.get("TM", "TG", "SG"),
+                ff.get("SM")
+        ));
+        return b;
+    }
 
     public static Building createBuildingWith4FloorsAndEverythingOnThirdFloor() {
         Floor.Factory floorFactory = Floor.Factory.getInstance();

@@ -68,25 +68,13 @@ import java.util.stream.StreamSupport;
  * of the TreeNode/MutableTreeNode methods will behave as defined no
  * matter what implementations are added.
  *
- * <p>
- * <strong>Warning:</strong>
- * Serialized objects of this class will not be compatible with
- * future Swing releases. The current serialization support is
- * appropriate for short term storage or RMI between applications running
- * the same version of Swing.  As of 1.4, support for long term storage
- * of all JavaBeans&trade;
- * has been added to the <code>java.beans</code> package.
- * Please see {@link java.beans.XMLEncoder}.
- *
  * @see javax.swing.tree.DefaultMutableTreeNode
  *
  * @author Rob Davis
  * @author Mike Chaberski
  */
 @SuppressWarnings("unused")
-public class TreeNode<T> implements Iterable<T>, Cloneable, Serializable
-{
-    private static final long serialVersionUID = -4298474751201349152L;
+public class TreeNode<T> implements Iterable<T> {
 
     /**
      * An enumeration that is always empty. This is used when an enumeration
@@ -1217,11 +1205,6 @@ public class TreeNode<T> implements Iterable<T>, Cloneable, Serializable
         return count;
     }
 
-
-    //
-    //  Overrides
-    //
-
     /**
      * Returns the result of sending <code>toString()</code> to this node's
      * user object, or the empty string if the node has no user object.
@@ -1261,36 +1244,6 @@ public class TreeNode<T> implements Iterable<T>, Cloneable, Serializable
         }
 
         return newNode;
-    }
-
-
-    // Serialization support.
-    private void writeObject(ObjectOutputStream s) throws IOException {
-        Object[]             tValues;
-
-        s.defaultWriteObject();
-        // Save the userObject, if its Serializable.
-        if(userObject != null && userObject instanceof Serializable) {
-            tValues = new Object[2];
-            tValues[0] = "userObject";
-            tValues[1] = userObject;
-        }
-        else
-            tValues = new Object[0];
-        s.writeObject(tValues);
-    }
-
-    private void readObject(ObjectInputStream s)
-            throws IOException, ClassNotFoundException {
-        T[]      tValues;
-
-        s.defaultReadObject();
-
-        //noinspection unchecked
-        tValues = (T[])s.readObject();
-
-        if(tValues.length > 0 && tValues[0].equals("userObject"))
-            userObject = tValues[1];
     }
 
     private final static class PreorderEnumeration<E> implements Iterator<TreeNode<E>> {

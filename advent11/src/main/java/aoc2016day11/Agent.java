@@ -1,9 +1,12 @@
 package aoc2016day11;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public abstract class Agent {
 
@@ -13,6 +16,7 @@ public abstract class Agent {
 
     public Agent(int maxMoves) {
         this.maxMoves = maxMoves;
+        checkArgument(maxMoves >= 0, "maxMoves >= 0");
     }
 
     /**
@@ -60,4 +64,36 @@ public abstract class Agent {
             System.out.format("no wins in max %d moves%n", agent.maxMoves);
         }
     }
+
+    protected static class Node {
+        public final Building label;
+        public @Nullable  final Node parent;
+        public final int level;
+
+        public Node(Building label, Node parent) {
+            this(label, parent, parent == null ? 0 : parent.level + 1);
+        }
+
+        private Node(Building label, Node parent, int level) {
+            this.label = label;
+            this.parent = parent;
+            this.level = level;
+        }
+
+        public static Node root(Building building) {
+            return new Node(building, null, 0);
+        }
+
+        public List<Building> path() {
+            List<Building> path = new ArrayList<>();
+            Node current = this;
+            while (current != null) {
+                path.add(current.label);
+                current = current.parent;
+            }
+            return path;
+        }
+    }
+
+
 }

@@ -17,8 +17,7 @@ public class DepthFirstAgent extends Agent {
         return Optional.ofNullable(winningPath);
     }
 
-    private @Nullable
-    List<Building> playDepthFirst(Building building, List<Building> path0, long attemptCounter) {
+    private @Nullable List<Building> playDepthFirst(Building building, List<Building> path0, long attemptCounter) {
         maybePrintAttempts(attemptCounter);
         final List<Building> path = append(path0, building);
         if (building.isWin()) {

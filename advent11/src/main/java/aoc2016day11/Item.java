@@ -25,6 +25,19 @@ public final class Item {
         this.hashCode = hashCode;
     }
 
+    public static Item fromCode(String code) {
+        Element element = Element.fromSymbol(code.substring(0, 1));
+        Kind kind;
+        if ('G' == code.charAt(1)) {
+            kind = Kind.generator;
+        } else if ('M' == code.charAt(1)) {
+            kind = Kind.microchip;
+        } else {
+            throw new IllegalArgumentException(code);
+        }
+        return Item.of(kind, element);
+    }
+
     private static Item[] microchips = new Item[Element.VALUES.size()];
     private static Item[] generators = new Item[Element.VALUES.size()];
 

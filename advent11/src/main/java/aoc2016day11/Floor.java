@@ -32,6 +32,10 @@ public final class Floor {
 
         public abstract Floor get(Collection<Item> items);
 
+        public Floor get(String...codes) {
+            return get(Stream.of(codes).map(Item::fromCode).collect(Collectors.toSet()));
+        }
+
         public Floor empty() {
             return get(ImmutableSet.of());
         }
