@@ -16,6 +16,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public final class Building {
 
     public static final AtomicLong counter = new AtomicLong(0L);
@@ -32,8 +34,8 @@ public final class Building {
         this.numMoves = numMoves;
         floorFactory = Floor.Factory.getInstance();
         this.floors = ImmutableList.copyOf(floors);
-        Args.check(elevatorPosition >= 0 && elevatorPosition < this.floors.size(), "position %s invalid for %s-floor building", elevatorPosition, this.floors.size());
-        Args.check(!this.floors.isEmpty(), "building cannot be empty");
+        checkArgument(elevatorPosition >= 0 && elevatorPosition < this.floors.size(), "position %s invalid for %s-floor building", elevatorPosition, this.floors.size());
+        checkArgument(!this.floors.isEmpty(), "building cannot be empty");
         this.elevatorPosition = elevatorPosition;
         if (floors.get(elevatorPosition).isEmpty()) {
             throw new IllegalArgumentException("can't start on floor with no items; elevatorPosition = " + elevatorPosition);
@@ -108,10 +110,10 @@ public final class Building {
     }
 
     private MoveResult move(Direction direction, Collection<Item> itemCollection) {
-        Args.check(itemCollection.size() == 1 || itemCollection.size() == 2, "can't move %s items ", itemCollection.size());
-        Args.check(direction != null, "direction must be nonnull");
+        checkArgument(itemCollection.size() == 1 || itemCollection.size() == 2, "can't move %s items ", itemCollection.size());
+        checkArgument(direction != null, "direction must be nonnull");
         List<Item> items = toList(itemCollection);
-        Args.check(items.size() == 1 || items.get(0).isSafeWith(items.get(1)), "item combo unsafe: %s", items);
+        checkArgument(items.size() == 1 || items.get(0).isSafeWith(items.get(1)), "item combo unsafe: %s", items);
         int newPos = elevatorPosition + direction.offset();
         if (newPos < 0 || newPos >= floors.size()) {
             return MoveResult.invalid(direction + " floor out of range: " + newPos);
@@ -163,7 +165,7 @@ public final class Building {
     }
 
     private Stream<Building> toMoves(Direction direction, Stream<ImmutableSet<Item>> carryables, Collection<Building> prohibited) {
-        Args.check(direction != null, "direction must be nonnull");
+        checkArgument(direction != null, "direction must be nonnull");
         return carryables
                  .map(items -> move(direction, items))
                 .filter(MoveResult::isValid)
@@ -255,7 +257,7 @@ public final class Building {
         List<Building> ordered = new ArrayList<>(moves);
         ordered.sort(moveNumberComparator());
         for (int i = 1; i < ordered.size(); i++) {
-            Args.check(ordered.get(i).numMoves == ordered.get(i - 1).numMoves + 1, "moves not consecutive: %s", ordered);
+            checkArgument(ordered.get(i).numMoves == ordered.get(i - 1).numMoves + 1, "moves not consecutive: %s", ordered);
         }
         return ordered.stream().max(moveNumberComparator()).get().numMoves;
     }

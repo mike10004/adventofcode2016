@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 enum Element {
     hydrogen("H"), lithium("L"), plutonium("P"), promethium("X"), ruthenium("R"), strontium("S"), thulium("T");
     public static List<Element> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
@@ -12,7 +14,7 @@ enum Element {
 
     Element(String symbol) {
         this.symbol = Objects.requireNonNull(symbol);
-        Args.check(!symbol.isEmpty(), "must be nonempty");
+        checkArgument(!symbol.isEmpty(), "must be nonempty");
     }
 
     public static Element fromSymbol(String symbol) {

@@ -9,6 +9,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
+
 public final class Item {
 
     private static final AtomicInteger placements = new AtomicInteger(0);
@@ -44,7 +47,7 @@ public final class Item {
     static {
         for (int i = 0; i < Element.VALUES.size(); i++) {
             Element element = Element.VALUES.get(i);
-            Args.checkState(element.ordinal() == i);
+            checkState(element.ordinal() == i);
             microchips[i] = new Item(Kind.microchip, element, i + 1);
             generators[i] = new Item(Kind.generator, element, Element.VALUES.size() + i + 1);
         }
@@ -95,7 +98,7 @@ public final class Item {
     }
 
     public boolean isSafeWith(Item other) {
-        Args.check(!equals(other), "checking safety on self: %s", this);
+        checkArgument(!equals(other), "checking safety on self: %s", this);
         return isSafeWith(Collections.singletonList(other));
     }
 

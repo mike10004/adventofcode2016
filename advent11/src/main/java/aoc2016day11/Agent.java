@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class Agent {
 
@@ -70,12 +71,12 @@ public abstract class Agent {
         public @Nullable  final Node parent;
         public final int level;
 
-        public Node(Building label, Node parent) {
+        public Node(Building label, @Nullable Node parent) {
             this(label, parent, parent == null ? 0 : parent.level + 1);
         }
 
-        private Node(Building label, Node parent, int level) {
-            this.label = label;
+        private Node(Building label, @Nullable Node parent, int level) {
+            this.label = checkNotNull(label);
             this.parent = parent;
             this.level = level;
         }
@@ -95,5 +96,20 @@ public abstract class Agent {
         }
     }
 
+    private int currentDepth = -1;
+
+    protected int reachedDepth(int depth) {
+        if (currentDepth != depth) {
+            depthChanged(depth);
+        }
+        currentDepth = depth;
+        return depth;
+    }
+
+    protected void depthChanged(int newDepth) {
+        if (isVerbose()) {
+            System.out.format("depth changed %d%n", newDepth);
+        }
+    }
 
 }

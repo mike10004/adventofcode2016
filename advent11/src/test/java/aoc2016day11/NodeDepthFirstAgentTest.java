@@ -6,6 +6,10 @@ import static org.junit.Assert.*;
 
 public class NodeDepthFirstAgentTest extends AgentTestBase {
 
+    @Test
+    public void playExample() throws Exception {
+        testPlayExample(new NodeDepthFirstAgent(11));
+    }
 
     @Test
     public void oneMoveAway() {
@@ -23,5 +27,6 @@ public class NodeDepthFirstAgentTest extends AgentTestBase {
     }
 
     private void testKnownMovesAway(Building b, int expected) {
-        testKnownMovesAway(b, expected, new NodeDepthFirstAgent(expected + 1, 0));
-    }}
+        testKnownMovesAway(b, expected, new NodeDepthFirstAgent(expected + 1));
+    }
+}

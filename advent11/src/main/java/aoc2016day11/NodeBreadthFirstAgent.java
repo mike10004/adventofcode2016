@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-public class NodeBreadthFirstAgent extends BreadthFirstAgent {
+public class NodeBreadthFirstAgent extends Agent {
 
     public NodeBreadthFirstAgent(int maxMoves) {
         super(maxMoves);
