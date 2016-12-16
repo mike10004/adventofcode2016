@@ -53,7 +53,7 @@ function computeChecksum(d, length) {
     assert.equal(actual, testCase.expected, "dragonify->checksum: expected " + testCase.expected + " != " + actual + " actual");
 });
 
-function doPartOne(input, diskSize) {
+function printChecksumOfDragonified(input, diskSize) {
     var dragonified = dragonify(input, diskSize);
     var checksum = computeChecksum(dragonified, diskSize);
     console.log(checksum);
@@ -61,4 +61,6 @@ function doPartOne(input, diskSize) {
 
 var puzzleInput = '11101000110010100';
 var partOneDiskSize = 272;
-doPartOne(puzzleInput, partOneDiskSize);
+printChecksumOfDragonified(puzzleInput, partOneDiskSize);
+var partTwoDiskSize = 35651584;
+printChecksumOfDragonified(puzzleInput, partTwoDiskSize);
