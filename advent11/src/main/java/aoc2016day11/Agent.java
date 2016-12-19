@@ -44,10 +44,6 @@ public abstract class Agent {
         return this;
     }
 
-    public void setAttemptCountPrintInterval(int attemptCountPrintInterval) {
-        this.attemptCountPrintInterval = attemptCountPrintInterval;
-    }
-
     @SuppressWarnings("SameParameterValue")
     protected static void maybePrintAttempts(long attempts) {
         if (attempts % attemptCountPrintInterval == 0) {
@@ -59,8 +55,8 @@ public abstract class Agent {
         Optional<List<Building>> strategy = agent.play(building);
         if (strategy.isPresent()) {
             List<Building> path = strategy.get();
-            Building.dump(path, System.out);
-            System.out.format("%d moves to win%n", Building.count(path));
+            Buildings.dump(path, System.out);
+            System.out.format("%d moves to win%n", Buildings.countMoves(path));
         } else {
             System.out.format("no wins in max %d moves%n", agent.maxMoves);
         }
@@ -93,22 +89,6 @@ public abstract class Agent {
                 current = current.parent;
             }
             return path;
-        }
-    }
-
-    private int currentDepth = -1;
-
-    protected int reachedDepth(int depth) {
-        if (currentDepth != depth) {
-            depthChanged(depth);
-        }
-        currentDepth = depth;
-        return depth;
-    }
-
-    protected void depthChanged(int newDepth) {
-        if (isVerbose()) {
-            System.out.format("depth changed %d%n", newDepth);
         }
     }
 

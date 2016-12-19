@@ -28,8 +28,8 @@ public class NodeDepthFirstAgent extends Agent {
         if (from.level >= maxMoves) {
             return null;
         }
-        Optional<List<Building>> search = from.label.findValidMovesExcept(path)
-                .perform()
+        Optional<List<Building>> search = from.label.computeReachable(path)
+
                 .map(b -> new Node(b, from))
                 .map(n -> play(n, maxMoves))
                 .filter(Objects::nonNull).findFirst();
@@ -38,9 +38,7 @@ public class NodeDepthFirstAgent extends Agent {
 
     public static void main(String[] args) {
         Building building = Buildings.createPuzzleInputBuilding();
-        Agent agent = new NodeDepthFirstAgent(32) {
-
-        }.toggleVerbose();
+        Agent agent = new NodeDepthFirstAgent(32).toggleVerbose();
         attempt(agent, building);
     }
 

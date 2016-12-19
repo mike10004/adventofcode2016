@@ -1,40 +1,59 @@
 package aoc2016day11;
 
-import java.util.EnumSet;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
-
-import static aoc2016day11.Element.P;
-import static aoc2016day11.Element.X;
-import static aoc2016day11.Element.R;
-import static aoc2016day11.Element.S;
-import static aoc2016day11.Element.T;
-import static aoc2016day11.Item.generator;
-import static aoc2016day11.Item.microchip;
-import static java.util.Arrays.asList;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class Buildings {
 
     private Buildings() {}
 
+    public static int countMoves(Collection<Building> moves) {
+        if (moves.isEmpty()) {
+            return 0;
+        }
+        return moves.size() - 1;
+    }
+
+    public static class Builder {
+        private final int numFloors;
+        private final List<int[]> elements = new ArrayList<>();
+
+        private Builder(int numFloors) {
+            this.numFloors = numFloors;
+        }
+
+        public MyBuilding finish(int elevator) {
+            MyBuilding.ElementCache cache = new MyBuilding.ElementCache(numFloors);
+            List<Element> elementsList = elements.stream().map(p -> new Element(p[0], p[1])).collect(Collectors.toList());
+            return new MyBuilding(numFloors, elevator, elementsList, cache);
+        }
+
+        public Builder add(int microchip, int generator) {
+            elements. add(new int[]{microchip, generator});
+            return this;
+        }
+    }
+
+    public static Builder build(int numFloors) {
+        return new Builder(numFloors);
+    }
+
     public static Building oneMoveFromWinning() {
-        Floor.Factory ff = Floor.Factory.getInstance();
-        Building b = new Building(1, asList(
-                ff.empty(),
-                ff.get("TM"),
-                ff.get("TG", "SG", "SM")
-        ));
-        return b;
+        return build(3)
+                .add(1, 2)
+                .add(2, 2)
+                .finish(1);
     }
 
     public static Building twoMovesFromWinning() {
-        Floor.Factory ff = Floor.Factory.getInstance();
-        Building b = new Building(2, asList(
-                ff.empty(),
-                ff.get("TM"),
-                ff.get("TG", "SG", "SM")
-        ));
-        return b;
+        return build(3)
+                .add(1, 2)
+                .add(2, 2)
+                .finish(2);
     }
 
 /*
@@ -44,26 +63,14 @@ F2 .  .  .  .  .
 F1 .  .  .  .  .
  */
     public static Building threeMovesFromWinning() {
-        Floor.Factory ff = Floor.Factory.getInstance();
-        Building b = new Building(2, asList(
-                ff.empty(),
-                ff.empty(),
-                ff.get("TM", "TG", "SG"),
-                ff.get("SM")
-        ));
-        return b;
+        return build(4)
+                .add(2, 2)
+                .add(2, 3)
+                .finish(2);
     }
 
     public static Building createBuildingWith4FloorsAndEverythingOnThirdFloor() {
-        Floor.Factory floorFactory = Floor.Factory.getInstance();
-        Building b = new Building(2,
-                asList(
-                        floorFactory.empty(),
-                        floorFactory.empty(),
-                        floorFactory.get(EnumSet.allOf(Item.class)),
-                        floorFactory.empty()
-                ));
-        return b;
+        throw new UnsupportedOperationException();
     }
 
     /*
@@ -83,20 +90,13 @@ The third floor contains
 The fourth floor contains nothing relevant.
  */
     public static Building createPuzzleInputBuilding() {
-        Floor.Factory floorFactory = Floor.Factory.getInstance();
-        Item PG = generator(P), PM = microchip(P);
-        Item XG = generator(X), XM = microchip(X);
-        Item RG = generator(R), RM = microchip(R);
-        Item SG = generator(S), SM = microchip(S);
-        Item TG = generator(T), TM = microchip(T);
-
-        Building building = Building.onFirstFloor(asList(
-                floorFactory.get(asList(TG, TM, PG, SG)),
-                floorFactory.get(asList(PM, SM)),
-                floorFactory.get(asList(XG, XM, RG, RM)),
-                floorFactory.empty()
-        ));
-        return building;
+        return build(4)
+                .add(1, 0) // plutonium
+                .add(2, 2) // promethium
+                .add(2, 2) // ruthenium
+                .add(1, 0) // strontium
+                .add(0, 0) // thulium
+                .finish(0);
     }
 
     public static Building createExampleBuilding() {
@@ -107,12 +107,38 @@ The fourth floor contains nothing relevant.
         The third floor contains a lithium generator.
         The fourth floor contains nothing relevant.
          */
-        Item hg = generator(P);
-        Item hm = microchip(P);
-        Item lg = generator(R);
-        Item lm = microchip(R);
-        Floor.Factory ff = Floor.Factory.getInstance();
-        return Building.onFirstFloor(asList(ff.get(asList(hm, lm)), ff.get(asList(hg)), ff.get(asList(lg)), ff.empty()));
+//        Item hg = generator(P);
+//        Item hm = microchip(P);
+//        Item lg = generator(R);
+//        Item lm = microchip(R);
+//        Floor.Factory ff = Floor.Factory.getInstance();
+//        return Building.onFirstFloor(asList(ff.get(asList(hm, lm)), ff.get(asList(hg)), ff.get(asList(lg)), ff.empty()));
+        return build(4)
+                .add(0, 1)
+                .add(0, 2)
+                .finish(0);
     }
 
+    public static void dump(Iterable<Building> moves, PrintStream out) {
+        for (Building b : moves) {
+            out.println(b);
+        }
+    }
+
+    public static Building gameWith9NextMoves() {
+        /*
+ 4  .  .  .  .  .  .  .  .  .  .  .
+ 3  E PG PM XG XM RG RM  .  .  .  .
+ 2  .  .  .  .  .  .  . SG SM  .  .
+ 1  .  .  .  .  .  .  .  .  . TG TM
+         */
+        return Buildings.build(4)
+                .add(2, 2)
+                .add(2, 2)
+                .add(2, 2)
+                .add(1, 1)
+                .add(0, 0)
+                .finish(2);
+
+    }
 }

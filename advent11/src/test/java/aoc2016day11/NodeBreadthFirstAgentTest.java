@@ -1,10 +1,7 @@
 package aoc2016day11;
 
-import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,38 +27,43 @@ public class NodeBreadthFirstAgentTest extends AgentTestBase {
 
     @Test
     public void testSimple1() {
-        Building b = build("PG", "PM").then().finish();
+        Building b = Buildings.build(2).add(0, 0).finish(0);
         testCanWin(b, new NodeBreadthFirstAgent(2));
     }
 
     @Test
     public void testSimple2() {
-        Building b = build("PG", "PM", "TG", "TM").then().finish();
+        Building b = Buildings.build(2).add(0, 0).add(0, 0).finish(0);
         testCanWin(b, new NodeBreadthFirstAgent(100));
     }
 
     @Test
     public void testSimple3() {
-        Building b = build("PG", "PM", "TG", "TM", "SG", "SM").then().finish();
+        Building b = Buildings.build(2).add(0, 0).add(0, 0).add(0, 0).finish(0);
         testCanWin(b, new NodeBreadthFirstAgent(100));
     }
 
-    @Ignore
-    @Test
-    public void testSimple4() {
-        Building b = build("PG", "PM", "RG", "RM", "TG", "TM", "SG", "SM").then().finish();
-        testCanWin(b, new NodeBreadthFirstAgent(100).toggleVerbose());
-    }
-
     private void testCanWin(Building b, Agent agent) {
+        System.out.println("testCanWin");
+        System.out.print(b);
         Optional<List<Building>> path = agent.play(b);
         assertTrue("no path to victory", path.isPresent());
-        System.out.format("%d moves to win%n", Building.count(path.get()));
-        Building.dump(path.get(), System.out);
-        System.out.format("%d moves to win%n", Building.count(path.get()));
+        System.out.format("%d moves to win%n", Buildings.countMoves(path.get()));
+        Buildings.dump(path.get(), System.out);
+        System.out.format("%d moves to win%n", Buildings.countMoves(path.get()));
     }
 
     private void testKnownMovesAway(Building b, int expected) {
+        System.out.println("testKnownMovesAway: " + expected);
+        System.out.println(b);
         testKnownMovesAway(b, expected, new NodeBreadthFirstAgent(expected + 1));
+    }
+
+    @Test
+    public void test9() {
+        Building b = Buildings.gameWith9NextMoves();
+        Agent agent = new NodeBreadthFirstAgent(10);
+        Optional<List<Building>> result = agent.play(b);
+        System.out.println(result);
     }
 }
