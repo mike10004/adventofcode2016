@@ -85,6 +85,34 @@
             });
             positionals['options'] = options;
             return positionals;
+        },
+
+        indexOf: function(array, predicate, nposValue) {
+            for (var i = 0; i < array.length; i++) {
+                if (predicate(array[i], i)) {
+                    return i;
+                }
+            }
+            nposValue = typeof(nposValue) === 'undefined' ? -1 : nposValue;
+            return nposValue;
+        },
+
+        count: function(array, predicate) {
+            var n = 0;
+            for (var i = 0; i < array.length; i++) {
+                if (predicate(array[i], i)) {
+                    n++;
+                }
+            }
+            return n;            
+        },
+
+        repeat: function(numElves, value) {
+            var elves = new Array();
+            for (var i = 0; i < numElves; i++) {
+                elves.push(value);
+            }
+            return elves;
         }
     };
 

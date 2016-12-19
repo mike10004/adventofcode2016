@@ -1,57 +1,74 @@
 var assert = require('assert');
+var utils = require('./utils.js');
 
-function findPresentsToLeft(elves, current) { // 'left' actually means higher-indexed in the array
+function findPresents(elves, current, targeter) {
+    var target = targeter(elves, current);
+    assert(typeof(target) !== 'undefined', 'no target found with ' + targeter);
+    return target;
+}
+
+var leftPresentFinder = function(elves, current) {
     for (var i = 1; i <= elves.length; i++) {
         var index = (current + i) % elves.length;
         if (elves[index] > 0) {
             return index;
         }
     }
-    throw 'no presents among all ' + elves.length + ' elves';
+};
+
+function findPresentsToLeft(elves, current) { // 'left' actually means higher-indexed in the array
+    return findPresents(elves, current, leftPresentFinder);
 }
 
-function advance(elves, turn) {
+var acrossPresentFinder = function(elves, current) {
+    var numWithPresents = utils.count(elves, elf => elf > 0);
+    var halfway = parseInt(numWithPresents / 2);
+    var n = 0;
+    for (var i = 1; i <= elves.length; i++) {
+        var index = (current + i) % elves.length;
+        if (elves[index] > 0) {
+            n++;
+            if (n >= halfway) {
+                return index;
+            }
+        } 
+    }
+};
+
+var removeLoser = function(elves, indexOfLoser) {
+    elves.splice(indexOfLoser, 1);
+}
+
+function advance(elves, turn, presentFinder, loserCallback) {
     if (elves[turn] === 0) {
         return true;
     }
-    var indexOfLoser = findPresentsToLeft(elves, turn);
+    var indexOfLoser = findPresents(elves, turn, presentFinder);
     if (indexOfLoser === turn) {
         // game stops because nobody else has presents
         return false;
     }
     elves[turn] += elves[indexOfLoser];
     elves[indexOfLoser] = 0;
+    if (loserCallback) {
+        loserCallback(elves, indexOfLoser);
+    }
     return true;
 }
 
-function indexOf(array, predicate) {
-    for (var i = 0; i < array.length; i++) {
-        if (predicate(array[i])) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-function play(elves, callback) {
-    callback = callback || (() => false);
+function play(elves, presentFinder, loserCallback) {
     var turn = 0, round = 0;
-    while (advance(elves, turn)) {
+    while (advance(elves, turn, presentFinder, loserCallback)) {
         turn++;
         turn = turn % elves.length;
         round++;
-        callback(elves, turn, round);
     }
-    var winner = indexOf(elves, elf => elf > 0);
+    var winner = utils.indexOf(elves, elf => elf > 0);
     return winner;
 }
 
 function onePerElf(numElves, value) {
-    var elves = new Array();
-    for (var i = 0; i < numElves; i++) {
-        elves.push(typeof(value) === 'undefined' ? 1 : value);
-    }
-    return elves;
+    return utils.repeat(numElves, 1);
 }
 
 /*
@@ -74,18 +91,31 @@ Elf 3 takes Elf 5's three presents.
     assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 1], 4), 6);
     assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 0], 3), 0);
     assert.equal(findPresentsToLeft([0, 0, 1, 1, 0, 0, 1], 6), 2);
+    // assert.equal(acrossPresentFinder([1], 0), 0);
+    // assert.equal(acrossPresentFinder([1, 1], 0), 1);
+    // assert.equal(acrossPresentFinder([1, 1, 1], 0), 1);
+    // assert.equal(acrossPresentFinder([1, 1, 1, 1], 0), 2);
+    // assert.equal(acrossPresentFinder([1, 0, 1], 0), 2);
+    // assert.equal(acrossPresentFinder([1, 0, 0], 0), 0);
+    // assert.equal(acrossPresentFinder([1, 1, 0], 0), 1);
+    // assert.equal(acrossPresentFinder([1, 0, 0, 0], 0), 0);
+    // assert.equal(acrossPresentFinder([1, 0, 0, 1], 0), 3);
+    // assert.equal(acrossPresentFinder([1, 0, 1, 1], 0), 2);
+    // assert.equal(acrossPresentFinder([1, 0, 1, 0], 0), 2);
+    // assert.equal(acrossPresentFinder([1, 1, 1, 0], 0), 1);
+    // assert.equal(acrossPresentFinder([1, 1, 0, 1], 0), 1);
+
     assert.deepEqual(onePerElf(5), [1, 1, 1, 1, 1]);
-    var winnerIndex = play(onePerElf(5), (elves, turn, round) => {
-        // console.error(elves, turn, round);
-        assert.equal(elves.length, 5, 'elves array length changed');
-    });
+    var winnerIndex = play(onePerElf(5), leftPresentFinder);
     assert.equal(winnerIndex + 1, 3);
+    winnerIndex = play(onePerElf(5), acrossPresentFinder, removeLoser);
+    assert.equal(winnerIndex + 1, 2);    
 })();
 
-function doPartOne() {
+function doPartX(presentFinder) {
     var numElves = 3012210;
     var numRounds;
-    var winnerIndex = play(onePerElf(numElves), (elves, turn, round) => {
+    var winnerIndex = play(onePerElf(numElves), presentFinder, (elves, turn, round) => {
         if (round % 10000000 === 0) {
             console.error("round " + round);
         }
@@ -93,6 +123,16 @@ function doPartOne() {
     });
     var elf = (winnerIndex + 1).toString();
     console.log("winner is elf " + elf + " after " + numRounds + " rounds");
+    
 }
 
-doPartOne();
+function doPartOne() {
+    doPartX(leftPresentFinder);
+}
+
+function doPartTwo() {
+    doPartX(acrossPresentFinder);
+}
+
+doPartTwo();
+
