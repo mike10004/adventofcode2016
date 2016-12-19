@@ -45,8 +45,8 @@ public abstract class Agent {
     }
 
     @SuppressWarnings("SameParameterValue")
-    protected static void maybePrintAttempts(long attempts) {
-        if (attempts % attemptCountPrintInterval == 0) {
+    protected void maybePrintAttempts(long attempts) {
+        if (verbose && (attempts % attemptCountPrintInterval == 0)) {
             System.out.format("%d attempts so far%n", attempts);
         }
     }
