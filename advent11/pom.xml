@@ -17,6 +17,15 @@
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <includes>
+                    <include>*.sh</include>
+                </includes>
+                <targetPath>${project.basedir}</targetPath>
+            </resource>
+        </resources>
     </build>
     <packaging>jar</packaging>
 

@@ -5,7 +5,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Interactive game.
@@ -14,11 +13,11 @@ public class Play {
 
     public static void main(String[] args) throws Exception {
 //        MyBuilding b = (MyBuilding) Buildings.createBuildingWith4FloorsAndEverythingOnThirdFloor();
-        MyBuilding b = (MyBuilding) Buildings.gameWith9NextMoves();
+        Building b = (Building) Buildings.gameWith4NextMoves();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             while (!b.isWin()) {
                 System.out.println(b);
-                List<MyBuilding.Move> moves = b.findValidMoves().collect(Collectors.toList());
+                List<Building.Move> moves = b.findValidMoves();
                 if (moves.isEmpty()) {
                     System.out.println("game over: no valid moves");
                     break;
@@ -47,8 +46,8 @@ public class Play {
                         break;
                     }
                     int moveIndex = Integer.parseInt(line.trim());
-                    MyBuilding.Move move = moves.get(moveIndex);
-                    b = b.move(move.direction, move.offsets.entries().stream().map(e -> new Target(e.getKey(), e.getValue())).collect(Collectors.toSet()));
+                    Building.Move move = moves.get(moveIndex);
+                    b = b.move(move.direction, move.target1, move.target2);
                 } else {
                     System.err.println("EOF on stdin");
                 }

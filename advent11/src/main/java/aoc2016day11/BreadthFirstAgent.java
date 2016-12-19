@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 
-public class NodeBreadthFirstAgent extends Agent {
+public class BreadthFirstAgent extends Agent {
 
     private static final int EXPECTED_QUEUE_SIZE = 10 * 1024 * 1024;
 
-    public NodeBreadthFirstAgent(int maxMoves) {
+    public BreadthFirstAgent(int maxMoves) {
         super(maxMoves);
     }
 
@@ -49,15 +49,18 @@ Breadth-First-Search(Graph, root):
 
  */
     private @Nullable List<Building> playBF(Queue<Node> queue) {
-        long maxPossibleStates = ((MyBuilding)(queue.peek().label)).countMaxPossibleStates();
-        Set<Building> visited = new HashSet<>(EXPECTED_QUEUE_SIZE);
+        long maxPossibleStates = queue.peek().label.countMaxPossibleStates();
+        final Set<Long> visited = new HashSet<>(EXPECTED_QUEUE_SIZE);
+        Predicate<Building> isUnvisited = b -> !visited.contains(b.hash);
+        long numAttempts = 0;
+        final int degree[] = new int[1];
         while (!queue.isEmpty()) {
-            maybePrintAttempts(queue.size());
+            maybePrintAttempts(++numAttempts);
             if (visited.size() > maxPossibleStates) {
                 throw new IllegalStateException(String.format("%d states have been examined but max possible is %d", visited.size(), maxPossibleStates));
             }
             Node current = queue.remove();
-            visited.add(current.label);
+            visited.add(current.label.hash);
             reachedDepth(current.level, queue.size());
             if (current.label.isWin()) {
                 List<Building> path = current.path();
@@ -65,15 +68,13 @@ Breadth-First-Search(Graph, root):
                 return path;
             }
             if (current.level + 1 <= maxMoves) {
-                final int degree[] = new int[1];
-                current.label.computeReachable(visited)
+                degree[0] = 0;
+                current.label.computeReachable(isUnvisited)
                         .forEach(b -> {
                             queue.add(new Node(b, current));
                             degree[0]++;
                         });
                 if (degree[0] > MAX_DEGREE) {
-//                    List<Building> reachable = current.label.computeReachable(visited).collect(Collectors.toList());
-//                    ((MyBuilding)current.label).findValidMoves();
                     throw new IllegalStateException("degree " + degree[0] + " > max " + MAX_DEGREE);
                 }
             }
@@ -98,8 +99,8 @@ Breadth-First-Search(Graph, root):
     }
 
     public static void main(String[] args) {
-        Building building = Buildings.createPuzzleInputBuilding();
-        Agent agent = new NodeBreadthFirstAgent(32).toggleVerbose();
+        Building building = Buildings.createPartTwoPuzzleInputBuilding();
+        Agent agent = new BreadthFirstAgent(64).toggleVerbose();
         attempt(agent, building);
     }
 

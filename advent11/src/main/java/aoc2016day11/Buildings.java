@@ -26,10 +26,10 @@ public class Buildings {
             this.numFloors = numFloors;
         }
 
-        public MyBuilding finish(int elevator) {
-            MyBuilding.ElementCache cache = new MyBuilding.ElementCache(numFloors);
-            List<Element> elementsList = elements.stream().map(p -> new Element(p[0], p[1])).collect(Collectors.toList());
-            return new MyBuilding(numFloors, elevator, elementsList, cache);
+        public Building finish(int elevator) {
+            Building.ElementCache cache = new Building.ElementCache(numFloors);
+            Element[] elementsList = elements.stream().map(p -> new Element(p[0], p[1])).collect(Collectors.toList()).toArray(new Element[0]);
+            return new Building(numFloors, elevator, elementsList, cache);
         }
 
         public Builder add(int microchip, int generator) {
@@ -99,6 +99,18 @@ The fourth floor contains nothing relevant.
                 .finish(0);
     }
 
+    public static Building createPartTwoPuzzleInputBuilding() {
+        return build(4)
+                .add(1, 0) // plutonium
+                .add(2, 2) // promethium
+                .add(2, 2) // ruthenium
+                .add(1, 0) // strontium
+                .add(0, 0) // thulium
+                .add(0, 0) // elerium
+                .add(0, 0) // dilithium
+                .finish(0);
+    }
+
     public static Building createExampleBuilding() {
         /*
         The first floor contains a hydrogen-compatible microchip
@@ -125,7 +137,7 @@ The fourth floor contains nothing relevant.
         }
     }
 
-    public static Building gameWith9NextMoves() {
+    public static Building gameWith4NextMoves() {
         /*
  4  .  .  .  .  .  .  .  .  .  .  .
  3  E PG PM XG XM RG RM  .  .  .  .

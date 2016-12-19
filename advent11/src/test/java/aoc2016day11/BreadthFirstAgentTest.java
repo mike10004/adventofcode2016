@@ -7,7 +7,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.*;
 
-public class NodeBreadthFirstAgentTest extends AgentTestBase {
+public class BreadthFirstAgentTest extends AgentTestBase {
 
 
     @Test
@@ -28,19 +28,19 @@ public class NodeBreadthFirstAgentTest extends AgentTestBase {
     @Test
     public void testSimple1() {
         Building b = Buildings.build(2).add(0, 0).finish(0);
-        testCanWin(b, new NodeBreadthFirstAgent(2));
+        testCanWin(b, new BreadthFirstAgent(2));
     }
 
     @Test
     public void testSimple2() {
         Building b = Buildings.build(2).add(0, 0).add(0, 0).finish(0);
-        testCanWin(b, new NodeBreadthFirstAgent(100));
+        testCanWin(b, new BreadthFirstAgent(100));
     }
 
     @Test
     public void testSimple3() {
         Building b = Buildings.build(2).add(0, 0).add(0, 0).add(0, 0).finish(0);
-        testCanWin(b, new NodeBreadthFirstAgent(100));
+        testCanWin(b, new BreadthFirstAgent(100));
     }
 
     private void testCanWin(Building b, Agent agent) {
@@ -56,13 +56,13 @@ public class NodeBreadthFirstAgentTest extends AgentTestBase {
     private void testKnownMovesAway(Building b, int expected) {
         System.out.println("testKnownMovesAway: " + expected);
         System.out.println(b);
-        testKnownMovesAway(b, expected, new NodeBreadthFirstAgent(expected + 1));
+        testKnownMovesAway(b, expected, new BreadthFirstAgent(expected + 1));
     }
 
     @Test
     public void test9() {
-        Building b = Buildings.gameWith9NextMoves();
-        Agent agent = new NodeBreadthFirstAgent(10);
+        Building b = Buildings.gameWith4NextMoves();
+        Agent agent = new BreadthFirstAgent(10);
         Optional<List<Building>> result = agent.play(b);
         System.out.println(result);
     }
