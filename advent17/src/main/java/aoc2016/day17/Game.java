@@ -57,9 +57,26 @@ public class Game {
         return callback.getState();
     }
 
+    public enum SearchOrder {
+        BREADTH_FIRST, PREORDER, POSTORDER;
+        public <E> Iterable<E> iterate(TreeTraverser<E> tree, E root) {
+            switch (this) {
+                case BREADTH_FIRST: return tree.breadthFirstTraversal(root);
+                case PREORDER: return tree.preOrderTraversal(root);
+                case POSTORDER: return tree.postOrderTraversal(root);
+                default:
+                    throw new IllegalStateException(this.toString());
+            }
+        }
+    }
+
     public void search(int maxDepth, SearchCallback callback) {
+        search(maxDepth, callback, SearchOrder.PREORDER);
+    }
+
+    public void search(int maxDepth, SearchCallback callback, SearchOrder searchOrder) {
         TreeTraverser<State> traverser = treeTraverser(maxDepth);
-        Iterable<State> states = traverser.breadthFirstTraversal(root());
+        Iterable<State> states = searchOrder.iterate(traverser, root());
         for (State state : states) {
             if (state.isWin()) {
                 callback.won(state);
