@@ -67,3 +67,5 @@ doUnitTest();
 var puzzleInput = '.^^..^...^..^^.^^^.^^^.^^^^^^.^.^^^^.^^.^^^^^^.^...^......^...^^^..^^^.....^^^^^^^^^....^^...^^^^..^';
 var partOneField = makeField(puzzleInput, 40);
 console.log(countSafe(partOneField));
+var partTwoField = makeField(puzzleInput, 400000);
+console.log(countSafe(partTwoField));
