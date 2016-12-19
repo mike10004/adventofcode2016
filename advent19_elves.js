@@ -34,6 +34,7 @@ function indexOf(array, predicate) {
 }
 
 function play(elves, callback) {
+    callback = callback || (() => false);
     var turn = 0, round = 0;
     while (advance(elves, turn)) {
         turn++;
@@ -75,8 +76,23 @@ Elf 3 takes Elf 5's three presents.
     assert.equal(findPresentsToLeft([0, 0, 1, 1, 0, 0, 1], 6), 2);
     assert.deepEqual(onePerElf(5), [1, 1, 1, 1, 1]);
     var winnerIndex = play(onePerElf(5), (elves, turn, round) => {
-        console.error(elves, turn, round);
+        // console.error(elves, turn, round);
         assert.equal(elves.length, 5, 'elves array length changed');
     });
     assert.equal(winnerIndex + 1, 3);
 })();
+
+function doPartOne() {
+    var numElves = 3012210;
+    var numRounds;
+    var winnerIndex = play(onePerElf(numElves), (elves, turn, round) => {
+        if (round % 10000000 === 0) {
+            console.error("round " + round);
+        }
+        numRounds = round;
+    });
+    var elf = (winnerIndex + 1).toString();
+    console.log("winner is elf " + elf + " after " + numRounds + " rounds");
+}
+
+doPartOne();
