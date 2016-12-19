@@ -53,7 +53,6 @@ Breadth-First-Search(Graph, root):
         final Set<Long> visited = new HashSet<>(EXPECTED_QUEUE_SIZE);
         Predicate<Building> isUnvisited = b -> !visited.contains(b.hash);
         long numAttempts = 0;
-        final int degree[] = new int[1];
         while (!queue.isEmpty()) {
             maybePrintAttempts(++numAttempts);
             if (visited.size() > maxPossibleStates) {
@@ -68,15 +67,10 @@ Breadth-First-Search(Graph, root):
                 return path;
             }
             if (current.level + 1 <= maxMoves) {
-                degree[0] = 0;
                 current.label.computeReachable(isUnvisited)
                         .forEach(b -> {
                             queue.add(new Node(b, current));
-                            degree[0]++;
                         });
-                if (degree[0] > MAX_DEGREE) {
-                    throw new IllegalStateException("degree " + degree[0] + " > max " + MAX_DEGREE);
-                }
             }
         }
         return null;
