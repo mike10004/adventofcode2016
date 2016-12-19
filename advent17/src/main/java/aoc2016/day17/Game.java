@@ -198,6 +198,13 @@ public class Game {
     private static final char[] legend = {'U', 'D', 'L', 'R'};
 
     public static void main(String[] args) {
-        String passcode = "";
+        String passcode = "bwnlcvfs";
+        Game game = new Game(passcode);
+        State win = game.play(128);
+        if (win == null) {
+            System.err.println("did not win game");
+            System.exit(2);
+        }
+        System.out.println(win);
     }
 }
