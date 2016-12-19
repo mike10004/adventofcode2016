@@ -1,10 +1,18 @@
 package aoc2016.day17;
 
+import com.google.common.collect.Ordering;
+import com.google.common.math.IntMath;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
 import aoc2016.day17.Game.State;
 import org.junit.experimental.theories.suppliers.TestedOn;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 public class GameTest {
 /*
@@ -95,5 +103,34 @@ After going DU (and then hashing hijklDU to get 528e), only the right door is op
     public void play3() {
         // With ulqzkmiv, the shortest would be DRURDRUDDLLDLUURRDULRLDUUDDDRR.
         testPlay("ulqzkmiv", "DRURDRUDDLLDLUURRDULRLDUUDDDRR");
+    }
+
+    private void testSearch(String passcode, int longestPathLength) {
+        int maxDepth = IntMath.checkedAdd(longestPathLength, 5);
+        Game game = new Game(passcode);
+        Optional<State> actual = game.findLongestPath(maxDepth);
+        System.out.format("longest path found: %s%n", actual.orElse(null));
+        assertEquals("path", longestPathLength, actual.get().trail.length);
+    }
+
+    @Test
+    public void search1() {
+//        If your passcode were ihgpwlah, the longest path would take 370 steps.
+//                With kglvqrro, the longest path would be 492 steps long.
+//                With ulqzkmiv, the longest path would be 830 steps long.
+        testSearch("ihgpwlah", 370);
+    }
+
+    @Test
+    public void search2() {
+//                With kglvqrro, the longest path would be 492 steps long.
+        testSearch("kglvqrro", 492);
+    }
+
+    @Test
+    public void search3() {
+
+//                With ulqzkmiv, the longest path would be 830 steps long.
+        testSearch("ulqzkmiv", 830);
     }
 }

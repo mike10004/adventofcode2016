@@ -10,6 +10,8 @@ import com.google.common.primitives.UnsignedBytes;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -31,15 +33,46 @@ public class Game {
         this(passcode, 4, 4, Hashing.md5());
     }
 
+    public interface SearchCallback {
+        void won(State winner);
+    }
+
+    public static class LongestPathCallback implements SearchCallback {
+        private State actual;
+
+        @Override
+        public void won(State winner) {
+            if (actual == null || winner.trail.length > actual.trail.length) {
+                actual = winner;
+            }
+        }
+        public Optional<State> getState() {
+            return Optional.ofNullable(actual);
+        }
+    }
+
+    public Optional<State> findLongestPath(int maxDepth) {
+        LongestPathCallback callback = new LongestPathCallback();
+        search(maxDepth, callback);
+        return callback.getState();
+    }
+
+    public void search(int maxDepth, SearchCallback callback) {
+        TreeTraverser<State> traverser = treeTraverser(maxDepth);
+        Iterable<State> states = traverser.breadthFirstTraversal(root());
+        for (State state : states) {
+            if (state.isWin()) {
+                callback.won(state);
+            }
+        }
+    }
+
     public State play(int maxDepth) {
-        TreeTraverser<State> traverser = treeTraverser();
+        TreeTraverser<State> traverser = treeTraverser(maxDepth);
         Iterable<State> bfs = traverser.breadthFirstTraversal(root());
         for (State state : bfs) {
             if (state.isWin()) {
                 return state;
-            }
-            if (state.level > maxDepth) {
-                return null;
             }
         }
         return null;
@@ -53,11 +86,15 @@ public class Game {
         return new State(previous, direction);
     }
 
-    private TreeTraverser<State> treeTraverser() {
+    private TreeTraverser<State> treeTraverser(final int maxDepth) {
         return new TreeTraverser<State>() {
             @Override
             public Iterable<State> children(State root) {
-                return Arrays.asList(root.findNext());
+                if (root.level >= maxDepth || root.isWin()) {
+                    return Collections.emptyList();
+                } else {
+                    return Arrays.asList(root.findNext());
+                }
             }
         };
     }
@@ -205,6 +242,14 @@ public class Game {
             System.err.println("did not win game");
             System.exit(2);
         }
-        System.out.println(win);
+        System.out.format("shortest path%s%n", win);
+        Optional<State> longest = game.findLongestPath(1024 * 1024);
+        if (longest.isPresent()) {
+            System.out.format("longest path: %d moves%n", longest.get().trail.length);
+        } else {
+            System.err.println("no longest path found");
+            System.exit(2);
+        }
+
     }
 }
