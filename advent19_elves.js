@@ -1,121 +1,97 @@
 var assert = require('assert');
 var utils = require('./utils.js');
 
-function findPresents(elves, current, targeter) {
-    var target = targeter(elves, current);
-    assert(typeof(target) !== 'undefined', 'no target found with ' + targeter);
-    return target;
-}
+function Elves(n, logger) {
 
-var leftPresentFinder = function(elves, current) {
-    for (var i = 1; i <= elves.length; i++) {
-        var index = (current + i) % elves.length;
-        if (elves[index] > 0) {
-            return index;
+    logger = logger || (()=>false);
+    var cursor = 0;
+    var winners = {};
+    var me = this;
+    var order = utils.repeat(n, i => i);
+    var getNumPresents = function(i) {
+        var w = winners[i];
+        return typeof(w) === 'undefined' ? 1 : w;
+    };
+
+    this.advance = function() {
+        var currentIndex = order[cursor];
+        var currentPresents = getNumPresents(currentIndex);
+        var loserCursor = (cursor + parseInt(order.length / 2)) % order.length;
+        var loserIndex = order[loserCursor];
+        var loserPresents = getNumPresents(loserIndex);
+        var newPresents = currentPresents + loserPresents;
+        winners[currentIndex] = newPresents;
+        delete winners[loserIndex];
+        order.splice(loserCursor, 1);
+        if (loserCursor > cursor) {
+            cursor++;
         }
-    }
-};
+        cursor = cursor % order.length;
+        
+    };
 
-function findPresentsToLeft(elves, current) { // 'left' actually means higher-indexed in the array
-    return findPresents(elves, current, leftPresentFinder);
+    this.getNumRemaining = function() {
+        return order.length;
+    };
+
+    this.getCursor = function() {
+        return cursor;
+    };
+
+    this.getNumWinners = function() {
+        var keys = Object.keys(winners);
+        return keys.length;
+    };
+
+    this.getWinner = function() {
+        if (me.getNumWinners() !== 1) {
+            assert.equal(me.getNumWinners(), 1, "getWinner called with non-terminal winners object with keys " + Object.keys(winners));
+        }
+        for (var k in winners) {
+            assert(!isNaN(parseInt(k)), "failed to parse winner key " + k);
+            return {
+                label: (parseInt(k) + 1).toString(),
+                numPresents: winners[k]
+            };
+        }
+        throw 'illegal state';
+    };
+
+    this.getOrder = function() {
+        return order.concat();
+    }
 }
 
-var acrossPresentFinder = function(elves, current) {
-    var numWithPresents = utils.count(elves, elf => elf > 0);
-    var halfway = parseInt(numWithPresents / 2);
-    var n = 0;
-    for (var i = 1; i <= elves.length; i++) {
-        var index = (current + i) % elves.length;
-        if (elves[index] > 0) {
-            n++;
-            if (n >= halfway) {
-                return index;
-            }
-        } 
-    }
-};
-
-var removeLoser = function(elves, indexOfLoser) {
-    elves.splice(indexOfLoser, 1);
-}
-
-function advance(elves, turn, presentFinder, loserCallback) {
-    if (elves[turn] === 0) {
-        return true;
-    }
-    var indexOfLoser = findPresents(elves, turn, presentFinder);
-    if (indexOfLoser === turn) {
-        // game stops because nobody else has presents
-        return false;
-    }
-    elves[turn] += elves[indexOfLoser];
-    elves[indexOfLoser] = 0;
-    if (loserCallback) {
-        loserCallback(elves, indexOfLoser);
-    }
-    return true;
-}
-
-function play(elves, presentFinder, loserCallback) {
-    var turn = 0, round = 0;
-    while (advance(elves, turn, presentFinder, loserCallback)) {
-        turn++;
-        turn = turn % elves.length;
+function play(elves, callback) {
+    callback = callback || (()=>false);
+    var round = 0;
+    callback(elves, round);
+    while (elves.getNumRemaining() > 1) {
+        elves.advance();
         round++;
+        callback(elves, round);
     }
-    var winner = utils.indexOf(elves, elf => elf > 0);
-    return winner;
+    return elves.getWinner();
 }
 
-function onePerElf(numElves, value) {
-    return utils.repeat(numElves, 1);
+function doUnitTest(){
+    var numElves = 5;
+    var winner = play(new Elves(numElves), (elves, round) => {
+        console.error(round, elves.getCursor(), elves.getOrder().map(i => i+1));
+    });
+    console.error("winner", winner);
+    assert.equal(winner.label, '2');
+    assert.equal(winner.numPresents, numElves);
 }
 
-/*
-Elf 1 takes Elf 2's present.
-Elf 2 has no presents and is skipped.
-Elf 3 takes Elf 4's present.
-Elf 4 has no presents and is also skipped.
-Elf 5 takes Elf 1's two presents.
-Neither Elf 1 nor Elf 2 have any presents, so both are skipped.
-Elf 3 takes Elf 5's three presents.
-*/
-(function doUnitTest(){
-    assert.equal(findPresentsToLeft([1], 0), 0);
-    assert.equal(findPresentsToLeft([1, 0], 1), 0);
-    assert.equal(findPresentsToLeft([1, 0], 0), 0);
-    assert.equal(findPresentsToLeft([0, 1], 0), 1);
-    assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 1], 0), 2);
-    assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 1], 1), 2);
-    assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 1], 2), 3);
-    assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 1], 4), 6);
-    assert.equal(findPresentsToLeft([1, 0, 1, 1, 0, 0, 0], 3), 0);
-    assert.equal(findPresentsToLeft([0, 0, 1, 1, 0, 0, 1], 6), 2);
-    // assert.equal(acrossPresentFinder([1], 0), 0);
-    // assert.equal(acrossPresentFinder([1, 1], 0), 1);
-    // assert.equal(acrossPresentFinder([1, 1, 1], 0), 1);
-    // assert.equal(acrossPresentFinder([1, 1, 1, 1], 0), 2);
-    // assert.equal(acrossPresentFinder([1, 0, 1], 0), 2);
-    // assert.equal(acrossPresentFinder([1, 0, 0], 0), 0);
-    // assert.equal(acrossPresentFinder([1, 1, 0], 0), 1);
-    // assert.equal(acrossPresentFinder([1, 0, 0, 0], 0), 0);
-    // assert.equal(acrossPresentFinder([1, 0, 0, 1], 0), 3);
-    // assert.equal(acrossPresentFinder([1, 0, 1, 1], 0), 2);
-    // assert.equal(acrossPresentFinder([1, 0, 1, 0], 0), 2);
-    // assert.equal(acrossPresentFinder([1, 1, 1, 0], 0), 1);
-    // assert.equal(acrossPresentFinder([1, 1, 0, 1], 0), 1);
+doUnitTest();
 
-    assert.deepEqual(onePerElf(5), [1, 1, 1, 1, 1]);
-    var winnerIndex = play(onePerElf(5), leftPresentFinder);
-    assert.equal(winnerIndex + 1, 3);
-    winnerIndex = play(onePerElf(5), acrossPresentFinder, removeLoser);
-    assert.equal(winnerIndex + 1, 2);    
-})();
-
-function doPartX(presentFinder) {
-    var numElves = 3012210;
+function doPartTwo() {
+    // var numElves = 3012210;
+    var numElves = 300;
     var numRounds;
-    var winnerIndex = play(onePerElf(numElves), presentFinder, (elves, turn, round) => {
+    var elves = onePerElf(numElves);
+    var winnerIndex = play(elves, (elves, round) => {
         if (round % 10000000 === 0) {
             console.error("round " + round);
         }
@@ -123,16 +99,6 @@ function doPartX(presentFinder) {
     });
     var elf = (winnerIndex + 1).toString();
     console.log("winner is elf " + elf + " after " + numRounds + " rounds");
-    
 }
 
-function doPartOne() {
-    doPartX(leftPresentFinder);
-}
-
-function doPartTwo() {
-    doPartX(acrossPresentFinder);
-}
-
-doPartTwo();
-
+// doPartTwo();

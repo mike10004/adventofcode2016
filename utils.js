@@ -97,6 +97,18 @@
             return nposValue;
         },
 
+        contains: function(array, predicate) {
+            if (typeof(predicate) !== 'function') {
+                return array.indexOf(predicate) >= 0;
+            }
+            for (var i = 0; i < array.length; i++) {
+                if (predicate(array[i], i)) {
+                    return true;
+                }
+            }
+            return false;
+        },
+
         count: function(array, predicate) {
             var n = 0;
             for (var i = 0; i < array.length; i++) {
@@ -109,8 +121,9 @@
 
         repeat: function(numElves, value) {
             var elves = new Array();
+            var valueFactory = typeof(value) === 'function' ? value : () => value;
             for (var i = 0; i < numElves; i++) {
-                elves.push(value);
+                elves.push(valueFactory(i));
             }
             return elves;
         }
