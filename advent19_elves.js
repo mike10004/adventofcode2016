@@ -1,19 +1,16 @@
 var assert = require('assert');
 var utils = require('./utils.js');
 
-function Elves(n, logger) {
+function Elves(n) {
 
-    logger = logger || (()=>false);
     var me = this;
 
-    var elfFactory = function(i) { return {index: i};}
-    var order = utils.repeat(n, elfFactory);   // array of elf indexes
+    var order = utils.repeat(n, function(i) { return {index: i};});   // array of elf indexes
     var cursor = 0;                        // whose turn it is (pointer into 'order' array)
     
     /**
      * Plays one round of white elephant. Transfers presents from one elf to
-     * another, removing dead elves from the order array and the winners map.
-     * Updates the winners map with the elf who gained presents. Increments the
+     * another, removing dead elves from the order array. Increments the
      * cursor if necessary.
      */
     this.advance = function() {
@@ -76,10 +73,9 @@ function doUnitTest(){
     assert.equal(winner.numPresents, numElves);
 }
 
-// doUnitTest();
+doUnitTest();
 
-function doPartTwo() {
-    var numElves = 3012210;
+function doPartTwo(numElves) {
     console.log("starting with " + numElves + " elves");
     var messageInterval = 10000, timer = "play-"  + messageInterval.toString();
     var numRounds;
@@ -97,4 +93,15 @@ function doPartTwo() {
     console.log("after " + numRounds + " rounds, one elf remains", winner);
 }
 
-doPartTwo();
+// puzzle input: 3012210
+var arg = process.argv[2];
+if (typeof(arg) === 'undefined') {
+    console.error("must specify argument: number of elves");
+    process.exit(1);
+}
+var parsedNum = parseInt(arg, 10);
+if (isNaN(parsedNum)) {
+    console.error("invalid number: " + arg);
+    process.exit(1);
+}
+doPartTwo(parsedNum);
