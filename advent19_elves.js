@@ -4,62 +4,52 @@ var utils = require('./utils.js');
 function Elves(n, logger) {
 
     logger = logger || (()=>false);
-    var cursor = 0;
-    var winners = {};
     var me = this;
-    var order = utils.repeat(n, i => i);
-    var getNumPresents = function(i) {
-        var w = winners[i];
-        return typeof(w) === 'undefined' ? 1 : w;
-    };
 
+    var elfFactory = function(i) { return {index: i};}
+    var order = utils.repeat(n, elfFactory);   // array of elf indexes
+    var cursor = 0;                        // whose turn it is (pointer into 'order' array)
+    
+    /**
+     * Plays one round of white elephant. Transfers presents from one elf to
+     * another, removing dead elves from the order array and the winners map.
+     * Updates the winners map with the elf who gained presents. Increments the
+     * cursor if necessary.
+     */
     this.advance = function() {
-        var currentIndex = order[cursor];
-        var currentPresents = getNumPresents(currentIndex);
+        var current = order[cursor];
+        var currentPresents = current.numPresents || 1;
         var loserCursor = (cursor + parseInt(order.length / 2)) % order.length;
-        var loserIndex = order[loserCursor];
-        var loserPresents = getNumPresents(loserIndex);
-        var newPresents = currentPresents + loserPresents;
-        winners[currentIndex] = newPresents;
-        delete winners[loserIndex];
+        var loser = order[loserCursor];
+        var loserPresents = loser.numPresents || 1;
+        current.numPresents = currentPresents + loserPresents;
         order.splice(loserCursor, 1);
         if (loserCursor > cursor) {
             cursor++;
         }
         cursor = cursor % order.length;
-        
     };
 
     this.getNumRemaining = function() {
         return order.length;
     };
 
-    this.getCursor = function() {
-        return cursor;
-    };
-
-    this.getNumWinners = function() {
-        var keys = Object.keys(winners);
-        return keys.length;
+    this.whoseTurn = function() {
+        return (order[cursor].index + 1).toString();
     };
 
     this.getWinner = function() {
-        if (me.getNumWinners() !== 1) {
-            assert.equal(me.getNumWinners(), 1, "getWinner called with non-terminal winners object with keys " + Object.keys(winners));
+        assert.equal(order.length, 1);
+        return {
+            index: order[0].index,
+            label: (order[0].index + 1).toString(),
+            numPresents: order[0].numPresents
         }
-        for (var k in winners) {
-            assert(!isNaN(parseInt(k)), "failed to parse winner key " + k);
-            return {
-                label: (parseInt(k) + 1).toString(),
-                numPresents: winners[k]
-            };
-        }
-        throw 'illegal state';
     };
 
     this.getOrder = function() {
         return order.concat();
-    }
+    };
 }
 
 function play(elves, callback) {
@@ -75,30 +65,36 @@ function play(elves, callback) {
 }
 
 function doUnitTest(){
+    var factory = function(i) { return {index: i};};
+    assert.deepEqual(utils.repeat(2, factory), [{index: 0}, {index: 1}]);
     var numElves = 5;
     var winner = play(new Elves(numElves), (elves, round) => {
-        console.error(round, elves.getCursor(), elves.getOrder().map(i => i+1));
+        console.error(round, elves.whoseTurn(), elves.getOrder().map(elf => elf.index+1));
     });
     console.error("winner", winner);
     assert.equal(winner.label, '2');
     assert.equal(winner.numPresents, numElves);
 }
 
-doUnitTest();
+// doUnitTest();
 
 function doPartTwo() {
-    // var numElves = 3012210;
-    var numElves = 300;
+    var numElves = 3012210;
+    console.log("starting with " + numElves + " elves");
+    var messageInterval = 10000, timer = "play-"  + messageInterval.toString();
     var numRounds;
-    var elves = onePerElf(numElves);
-    var winnerIndex = play(elves, (elves, round) => {
-        if (round % 10000000 === 0) {
-            console.error("round " + round);
+    var elves = new Elves(numElves);
+    console.time(timer);
+    var winner = play(elves, (elves, round) => {
+        if (round > 0 && (round % messageInterval === 0)) {
+            console.log("round " + round + "; " + elves.getNumRemaining() + " elves remaining");
+            console.timeEnd(timer);
+            console.time(timer);
         }
         numRounds = round;
-    });
-    var elf = (winnerIndex + 1).toString();
-    console.log("winner is elf " + elf + " after " + numRounds + " rounds");
+    }); 
+    console.timeEnd(timer);
+    console.log("after " + numRounds + " rounds, one elf remains", winner);
 }
 
-// doPartTwo();
+doPartTwo();

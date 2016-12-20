@@ -123,7 +123,8 @@
             var elves = new Array();
             var valueFactory = typeof(value) === 'function' ? value : () => value;
             for (var i = 0; i < numElves; i++) {
-                elves.push(valueFactory(i));
+                var product = valueFactory(i);
+                elves.push(product);
             }
             return elves;
         }
