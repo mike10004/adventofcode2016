@@ -12,16 +12,27 @@
 #define FALSE 0
 #endif
 
-int in_range(const long ip, const long range_min, const long range_max)
+typedef struct Range {
+    long min;
+    long max;
+} RANGE;
+
+void set_range(RANGE* range, const long min, const long max)
 {
-    return (ip >= range_min) && (ip <= range_max);
+    range->min = min;
+    range->max = max;
 }
 
-int is_blocked(long ip, long* range_mins, long* range_maxs, const int num_ranges)
+int in_range(const long ip, RANGE* range)
+{
+    return (ip >= range->min) && (ip <= range->max);
+}
+
+int is_blocked(long ip, RANGE* ranges, const int num_ranges)
 {
     int i;
     for (i = 0; i < num_ranges; i++) {
-        if (in_range(ip, range_mins[i], range_maxs[i])) {
+        if (in_range(ip, &(ranges[i]))) {
             return TRUE;
         }
     }
@@ -31,17 +42,16 @@ int is_blocked(long ip, long* range_mins, long* range_maxs, const int num_ranges
 int main0(const long ip_min, const long ip_max) {
     int ngood;
     long range_min, range_max;
-    long range_mins[MAX_NUM_RANGES];
-    long range_maxs[MAX_NUM_RANGES];
+    RANGE ranges[MAX_NUM_RANGES];
     int range_idx = 0;
     long ip;
-    while ((ngood = fscanf(stdin, "%ld-%ld", &range_min, &range_max)) == 2) {
-        range_mins[range_idx] = range_min;
-        range_maxs[range_idx] = range_max;
+    while ((range_idx < MAX_NUM_RANGES) 
+            && (ngood = fscanf(stdin, "%ld-%ld", &range_min, &range_max)) == 2) {
+        set_range(&(ranges[range_idx]), range_min, range_max);
         range_idx++;
     }
     for (ip = ip_min; ip <= ip_max; ip++) {
-        if (!is_blocked(ip, range_mins, range_maxs, range_idx)) {
+        if (!is_blocked(ip, ranges, range_idx)) {
             fprintf(stdout, "least unblocked: %ld\n", ip);
             break;
         }    
