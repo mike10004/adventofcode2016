@@ -15,7 +15,7 @@ public class NodeTest {
                 "/dev/grid/node-x0-y0     93T   68T    25T   73%\n" +
                 "/dev/grid/node-x0-y1     91T   69T    22T   75%";
 
-        List<Node> nodes = Node.parseAll(CharSource.wrap(input));
+        List<Node> nodes = Node.parseAll(CharSource.wrap(input), 1, 1);
         assertEquals("count", 2, nodes.size());
         Node n = nodes.get(0);
         assertEquals("x", 0, n.x);
@@ -25,7 +25,7 @@ public class NodeTest {
     }
 
     private static Node n(int x, int y, int used, int available) {
-        return new Node(x, y, used, available);
+        return new Node(x, y, used, available, false);
     }
 
     @Test

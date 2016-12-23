@@ -1,16 +1,20 @@
 package aoc2016.day22;
 
 import com.google.common.io.CharSource;
-import com.google.common.io.Files;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.util.List;
 
 public class PartOne {
+
     public static void main(String[] args) throws Exception {
-        CharSource input = Files.asCharSource(new File(args.length > 0 ? args[0] : "input.txt"), StandardCharsets.UTF_8);
-        List<Node> nodes = Node.parseAll(input);
+        int numViablePairs = countViablePairs(Play.puzzleInput);
+        System.out.format("%d viable pairs%n", numViablePairs);
+    }
+
+    static int countViablePairs(CharSource input) throws IOException {
+        List<Node> nodes = Node.parseAll(input, -1, -1);
+        System.out.format("%d nodes; max x-coordinate: %d%n", nodes.size(), Grid.findMaxX(nodes.stream()));
         int numViablePairs = 0;
         for (Node a : nodes) {
             for (Node b : nodes) {
@@ -19,6 +23,6 @@ public class PartOne {
                 }
             }
         }
-        System.out.format("%d viable pairs (out of %d nodes)%n", numViablePairs, nodes.size());
+        return numViablePairs;
     }
 }
