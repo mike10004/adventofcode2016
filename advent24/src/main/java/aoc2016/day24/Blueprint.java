@@ -3,6 +3,7 @@ package aoc2016.day24;
 import com.google.common.base.Function;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 import com.google.common.io.CharSource;
 import com.google.common.math.IntMath;
@@ -16,6 +17,7 @@ import org.jgrapht.graph.SimpleWeightedGraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -126,13 +128,30 @@ public class Blueprint {
         return total;
     }
 
+    public enum FinalPosition {
+        WHEREVER,
+        RETURN_TO_START
+    }
+
     public List<GraphPath<Duct, Duct.Passage>> findShortestPathToNumberedDucts() {
+        return findShortestPathToNumberedDucts(FinalPosition.WHEREVER);
+    }
+
+    public List<GraphPath<Duct, Duct.Passage>> findShortestPathToNumberedDucts(FinalPosition finalPosition) {
         Graph<Duct, Duct.Passage> g = makePassageGraph();
-        Set<Duct> numberedDucts = g.vertexSet().stream().filter(Duct::isNumbered).collect(Collectors.toSet());
-        Stream<List<Duct>> permutations = Collections2.permutations(numberedDucts).stream().filter(ducts -> ducts.get(0).content == '0');
+        Set<Duct> allNumberedDucts = g.vertexSet().stream().filter(Duct::isNumbered).collect(Collectors.toSet());
+        Duct start = allNumberedDucts.stream().filter(d -> d.content == '0').findFirst().get();
+        Set<Duct> nonStarters = allNumberedDucts.stream().filter(d -> d.content != '0').collect(Collectors.toSet());
+        Collection<List<Duct>> nonStarterPermutations = Collections2.permutations(nonStarters);
         List<List<GraphPath<Duct, Duct.Passage>>> pathsets = new ArrayList<>();
-        permutations.forEach(ducts -> {
+        nonStarterPermutations.forEach(middleDucts -> {
             List<GraphPath<Duct, Duct.Passage>> pathset = new ArrayList<>();
+            List<Duct> ducts = new ArrayList<>(middleDucts.size() + 2);
+            ducts.add(start);
+            ducts.addAll(middleDucts);
+            if (finalPosition == FinalPosition.RETURN_TO_START) {
+                ducts.add(start);
+            }
             for (int i = 0; i < ducts.size() - 1; i++) {
                 Duct first = ducts.get(i), last = ducts.get(i + 1);
                 DijkstraShortestPath<Duct, Duct.Passage> algo = new DijkstraShortestPath<>(g, first, last);
@@ -142,6 +161,7 @@ public class Blueprint {
             }
             pathsets.add(pathset);
         });
+        checkState(pathsets.size() > 0, "no path sets?");
         List<GraphPath<Duct, Duct.Passage>> shortest = pathsets.stream().min(Ordering.<Integer>natural().onResultOf(new Function<Iterable<GraphPath<Duct, Duct.Passage>>, Integer>(){
             @Override
             public Integer apply(Iterable<GraphPath<Duct, Duct.Passage>> input) {

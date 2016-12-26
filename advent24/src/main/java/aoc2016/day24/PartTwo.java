@@ -10,14 +10,13 @@ import org.jgrapht.GraphPath;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.function.BinaryOperator;
 
-public class PartOne {
+public class PartTwo {
 
     public static void main(String[] args) throws IOException {
-        CharSource input = Resources.asCharSource(PartOne.class.getResource("/input.txt"), StandardCharsets.US_ASCII);
+        CharSource input = Resources.asCharSource(PartTwo.class.getResource("/input.txt"), StandardCharsets.US_ASCII);
         Blueprint blueprint = Blueprint.parse(input);
-        List<GraphPath<Duct, Passage>> paths = blueprint.findShortestPathToNumberedDucts(FinalPosition.WHEREVER);
+        List<GraphPath<Duct, Passage>> paths = blueprint.findShortestPathToNumberedDucts(FinalPosition.RETURN_TO_START);
         int totalLength = paths.stream().map(GraphPath::getLength).reduce(0, IntMath::checkedAdd);
         System.out.format("length: %d%n", totalLength);
     }

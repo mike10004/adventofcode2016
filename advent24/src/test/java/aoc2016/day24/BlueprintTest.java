@@ -1,5 +1,6 @@
 package aoc2016.day24;
 
+import aoc2016.day24.Blueprint.FinalPosition;
 import aoc2016.day24.Duct.Passage;
 import com.google.common.io.CharSource;
 import org.jgrapht.Graph;
@@ -80,5 +81,13 @@ public class BlueprintTest {
         List<GraphPath<Duct, Duct.Passage>> paths = Blueprint.parse(CharSource.wrap(EXAMPLE)).findShortestPathToNumberedDucts();
         int length = Blueprint.computeTotalLength(paths);
         assertEquals("path length", 14, length);
+    }
+
+    @Test
+    public void findShortest_withReturn() throws Exception {
+        List<GraphPath<Duct, Duct.Passage>> paths = Blueprint.parse(CharSource.wrap(EXAMPLE))
+                .findShortestPathToNumberedDucts(FinalPosition.RETURN_TO_START);
+        int length = Blueprint.computeTotalLength(paths);
+        assertEquals("path length", 20, length);
     }
 }
