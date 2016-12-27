@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -50,13 +52,44 @@ public class Play {
         nextMoves.forEach(p -> moves.put(String.valueOf(index.getAndIncrement()), p));
     }
 
+    private static final Pattern showCommand = Pattern.compile("show\\s+(\\d+)(?:\\D+)?(\\d+)\\D*");
+
+    private boolean isCommand(String line) {
+        return quitters.contains(line)
+                || showCommand.matcher(line).find();
+    }
+
+    private boolean processCommand(String line) {
+        if (quitters.contains(line)) {
+            return false;
+        }
+        Matcher m = showCommand.matcher(line);
+        if (m.find()) {
+            try {
+                int x = Integer.parseInt(m.group(1));
+                int y = Integer.parseInt(m.group(2));
+                Node n = current.findNodeByPosition(x, y).orElse(null);
+                if (n == null) {
+                    System.err.format("no node at %d, %d%n", x, y);
+                } else {
+                    System.out.format("(%d, %d) = %s%n", x, y, n.encode());
+                }
+            } catch (NumberFormatException e) {
+                System.err.format("failed to parse input: %s (%s)%n", line, e);
+            }
+            return true;
+        }
+        System.err.format("unrecognized command: %s%n", line);
+        return true;
+    }
+
     public LineProcessor<Grid> asLineProcessor() {
         return new LineProcessor<Grid>() {
             @Override
             public boolean processLine(String line) throws IOException {
                 line = line.toLowerCase().trim();
-                if (quitters.contains(line)) {
-                    return false;
+                if (isCommand(line)) {
+                    return processCommand(line);
                 }
                 Pair move = moves.get(line);
                 if (move == null) {

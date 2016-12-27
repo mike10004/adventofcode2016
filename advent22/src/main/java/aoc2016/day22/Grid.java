@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,16 +35,34 @@ public class Grid {
     final DirectedGraph<Node, Pair> graph;
     public final int level;
     public final Point payload;
+    private MoveListener moveListener;
 
     public Grid(Pair cause, int level, DirectedGraph<Node, Pair> graph, int payloadX, int payloadY) {
-        this(cause, level, graph, new Point(payloadX, payloadY));
+        this(cause, level, graph, payloadX, payloadY, null);
+    }
+
+    public Grid(Pair cause, int level, DirectedGraph<Node, Pair> graph, int payloadX, int payloadY, MoveListener moveListener) {
+        this(cause, level, graph, new Point(payloadX, payloadY), moveListener);
+    }
+
+    public interface MoveListener {
+        void performed(Pair move);
     }
 
     public Grid(Pair cause, int level, DirectedGraph<Node, Pair> graph, Point payload) {
+        this(cause, level, graph, payload, null);
+    }
+
+    public Grid(Pair cause, int level, DirectedGraph<Node, Pair> graph, Point payload, MoveListener moveListener) {
         this.graph = graph;
         this.level = level;
         this.cause = cause;
         this.payload = payload;
+        this.moveListener = moveListener;
+    }
+
+    public void setMoveListener(MoveListener moveListener) {
+        this.moveListener = moveListener;
     }
 
     public static int findMaxX(Stream<Node> nodes) {
@@ -54,6 +73,10 @@ public class Grid {
 
     public boolean isWin(int targetX, int targetY) {
         return payload.x == targetX && payload.y == targetY;
+    }
+
+    public Optional<Node> findNodeByPosition(int x, int y) {
+        return orderedNodeList().stream().filter(n -> n.isAtPosition(x, y)).findFirst();
     }
 
     public static Grid make(List<Node> nodes) {
@@ -107,6 +130,10 @@ public class Grid {
     }
 
     public Grid move(Pair pair) {
+        return move(pair, this.moveListener);
+    }
+
+    public Grid move(Pair pair, MoveListener moveListener) {
         SimpleDirectedGraph<Node, Pair> g = copyGraph();
         g.removeVertex(pair.src);
         g.removeVertex(pair.dst);
@@ -116,7 +143,12 @@ public class Grid {
         Set<Node> nodes = g.vertexSet();
         addPossibleMoves(g, altered.src, nodes, true);
         addPossibleMoves(g, altered.dst, nodes, true);
-        return new Grid(pair, level + 1, g, altered.dst.payload ? altered.dst.position : payload);
+        Grid grid = new Grid(pair, level + 1, g, altered.dst.payload ? altered.dst.position : payload, moveListener);
+        if (moveListener != null) {
+            moveListener.performed(pair);
+        }
+        checkState(grid.findNodeByPosition(pair.src.x, pair.src.y).get().used == 0, "src node in new grid is not empty");
+        return grid;
     }
 
     private static final Ordering<Node> nodeOrdering = Ordering.<Integer>natural()
@@ -135,6 +167,9 @@ public class Grid {
     private static final float WALL_THRESHOLD = 0.90f;
 
     static char represent(Node n, Stream<Pair> moves) {
+        if (n.used == 0) {
+            return '_';
+        }
         if (n.payload) {
             return 'G';
         } else if (n.proportionUsed() > WALL_THRESHOLD) {
@@ -147,6 +182,10 @@ public class Grid {
             }
         }
 
+    }
+
+    public String illustrate() {
+        return illustrate(moves().collect(Collectors.toList()));
     }
 
     public String illustrate(Collection<Pair> moves) {
@@ -208,7 +247,7 @@ public class Grid {
         int y = 0;
         b.append("   ");
         for (int x = 0; x <= maxX; x++) {
-            b.append(String.format("%7d  ", x));
+            b.append(String.format("%8d  ", x));
         }
         b.append('\n');
         for (int i = 0; i < nodes.size(); i++) {

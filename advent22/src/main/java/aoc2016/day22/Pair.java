@@ -3,6 +3,7 @@ package aoc2016.day22;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 public class Pair {
     public final Node src;
@@ -11,6 +12,8 @@ public class Pair {
     public Pair(Node src, Node dst) {
         this.src = src;
         this.dst = dst;
+        checkArgument(getDirectionY() == 0 || getDirectionX() == 0, "diagonal move: %s -> %s", src, dst);
+        checkArgument(getDirectionX() != 0 || getDirectionY() != 0, "no movement: %s -> %s", src, dst);
     }
 
     public static Pair of(Node src, Node dst) {
@@ -56,5 +59,28 @@ public class Pair {
         return cause != null
                 && src.isSameLocation(cause.dst)
                 && dst.isSameLocation(cause.src);
+    }
+
+    public boolean isParallel(int directionX, int directionY) {
+        int xDelta = Math.abs(src.x - dst.x), yDelta = Math.abs(src.y - dst.y);
+        return (Math.abs(directionX) + xDelta == 0) || (Math.abs(directionY) + yDelta == 0);
+    }
+
+    public int getDirectionX() {
+        return dst.x - src.x;
+    }
+
+    public int getDirectionY() {
+        return dst.y - src.y;
+    }
+
+    public boolean isOppositeDirection(int directionX, int directionY) {
+        if (directionX == 0) {
+            return getDirectionY() / Math.abs(getDirectionY()) == -directionY / Math.abs(directionY);
+        }
+        if (directionY == 0) {
+            return getDirectionX() / Math.abs(getDirectionX()) == -directionX / Math.abs(directionX);
+        }
+        throw new IllegalArgumentException("x-direction or y-direction must be 0");
     }
 }

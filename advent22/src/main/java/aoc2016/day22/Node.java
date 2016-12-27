@@ -92,6 +92,14 @@ public class Node {
                 || (y == other.y && Math.abs(x - other.x) == 1);
     }
 
+    public boolean isAtPosition(Point position) {
+        return isAtPosition(position.x, position.y);
+    }
+
+    public boolean isAtPosition(int x, int y) {
+        return this.x == x && this.y == y;
+    }
+
     public String encode() {
         return String.format("%s%3d/%3d%s", payload ? '[' : ' ', used, used + available, payload ? ']' : ' ');
     }
