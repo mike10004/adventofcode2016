@@ -84,8 +84,7 @@ public class Play {
     }
 
     private void present(PrintStream out) {
-//        checkState(!moves.isEmpty(), "moves is empty for grid %s", current);
-        out.println(current);
+        out.println(current.illustrate(moves.values()));
         System.out.println();
         for (String index : moves.keySet()) {
             Pair move = moves.get(index);
@@ -97,6 +96,14 @@ public class Play {
 
     static class Grids {
         private Grids() {}
+
+        public static Grid puzzleInput() {
+            try {
+                return Grid.make(Node.parseAll(puzzleInput, 37, 0));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         public static Grid small() throws IOException {
             String input = "Filesystem            Size  Used  Avail  Use%\n" +

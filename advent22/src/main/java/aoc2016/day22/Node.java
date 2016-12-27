@@ -30,6 +30,10 @@ public class Node {
         this.payload = payload;
     }
 
+    public float proportionUsed() {
+        return (float) used / ((float)(used + available));
+    }
+
     private static final Pattern dfPattern =
             Pattern.compile("/dev/grid/node-(?:x)?(\\d+)-(?:y)?(\\d+)\\s+\\d+T?\\s+(\\d+)T?\\s+(\\d+)T?(?:\\s+\\S+)?\\s*");
 

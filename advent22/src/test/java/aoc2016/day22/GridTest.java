@@ -34,6 +34,32 @@ public class GridTest {
         System.out.println("==============");
     }
 
+
+    @Test
+    public void test_toString_puzzleInput() throws Exception {
+        Grid g = Play.Grids.puzzleInput();
+        System.out.println("==============");
+        System.out.println(g.toString());
+        System.out.println("==============");
+    }
+
+    @Test
+    public void illustrate_small() throws Exception {
+        Grid g = Play.Grids.small();
+        System.out.println("==============");
+        System.out.println(g.illustrate(g.moves().collect(Collectors.toList())));
+        System.out.println("==============");
+    }
+
+
+    @Test
+    public void illustrate_large() throws Exception {
+        Grid g = Play.Grids.puzzleInput();
+        System.out.println("==============");
+        System.out.println(g.illustrate(g.moves().collect(Collectors.toList())));
+        System.out.println("==============");
+    }
+
     @Test
     public void smallGrid() throws Exception {
         Grid root = Play.Grids.small();
@@ -47,6 +73,30 @@ public class GridTest {
     public void moves2() throws Exception {
         Grid g = Play.Grids.shouldHaveSome();
         checkHasMoves(g);
+    }
+
+    @Test
+    public void createXAxisLabels() throws Exception {
+        String expected =   "                    1 1 \n"
+                +           "0 1 2 3 4 5 6 7 8 9 0 1 \n";
+        String actual = Grid.createXAxisLabels(11, "");
+        System.out.println("==============");
+        System.out.print(expected);
+        System.out.println("==============");
+        System.out.println("==============");
+        System.out.print(actual);
+        System.out.println("==============");
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void isLeadingZero() {
+        assertTrue(Grid.isLeadingZero(2, 0, 0));
+        assertTrue(Grid.isLeadingZero(2, 9, 0));
+        assertTrue(Grid.isLeadingZero(2, 0, 0));
+        assertFalse(Grid.isLeadingZero(2, 10, 1));
+        assertFalse(Grid.isLeadingZero(2, 11, 1));
+        assertFalse(Grid.isLeadingZero(1, 0, 0));
     }
 
     private void checkHasMoves(Grid g) {

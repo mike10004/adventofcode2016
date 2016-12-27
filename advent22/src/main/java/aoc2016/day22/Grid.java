@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.TreeTraverser;
+import com.google.common.math.IntMath;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.EdgeFactory;
 import org.jgrapht.graph.SimpleDirectedGraph;
@@ -13,11 +14,14 @@ import org.jgrapht.graph.SimpleDirectedGraph;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.io.PrintStream;
+import java.math.RoundingMode;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -124,7 +128,79 @@ public class Grid {
         return nodeOrdering.immutableSortedCopy(set);
     }
 
-    @Override
+    private static Function<Node, Stream<Pair>> movesFrom(Collection<Pair> moves) {
+        return n -> moves.stream().filter(p -> p.src.equals(n));
+    }
+
+    private static final float WALL_THRESHOLD = 0.90f;
+
+    static char represent(Node n, Stream<Pair> moves) {
+        if (n.payload) {
+            return 'G';
+        } else if (n.proportionUsed() > WALL_THRESHOLD) {
+            return '#';
+        } else {
+            if (moves.count() > 0) {
+                return '^';
+            } else {
+                return '.';
+            }
+        }
+
+    }
+
+    public String illustrate(Collection<Pair> moves) {
+        List<Node> nodes = orderedNodeList();
+        int maxX = Grid.findMaxX(nodes.stream());
+        StringBuilder b = new StringBuilder(256);
+        int y = 0;
+        Function<Node, Stream<Pair>> mf = movesFrom(moves);
+        for (int i = 0; i < nodes.size(); i++) {
+            if (i % (maxX + 1) == 0) {
+                if (i > 0) {
+                    b.append('\n');
+                }
+                if (i + 1 < nodes.size()) {
+                    b.append(String.format("%2d ", y));
+                }
+                y++;
+            }
+            Node n = nodes.get(i);
+            b.append(represent(n, mf.apply(n)));
+            b.append(' ');
+        }
+        return createXAxisLabels(maxX, "   ") + b.toString();
+    }
+
+    static boolean isLeadingZero(int p, int i, int v) {
+        // (2, 0, 0) -> true
+        // (2, 10, 1) -> false
+        if (p == 1 && i == 0) {
+            return false;
+        }
+        return v == 0 && i < IntMath.pow(10, p - 1);
+    }
+
+    static String createXAxisLabels(int maxX, String indent) {
+
+        StringBuilder b = new StringBuilder(256);
+        for (int p = IntMath.log10(maxX, RoundingMode.CEILING); p >= 1; p--) {
+            b.append(indent);
+            for (int i = 0; i <= maxX; i++) {
+                int q = IntMath.pow(10, p - 1);
+                int v = IntMath.divide(i, q, RoundingMode.FLOOR) % 10;
+                if (isLeadingZero(p, i, v)) {
+                    b.append(' ');
+                } else {
+                    b.append(v);
+                }
+                b.append(' ');
+            }
+            b.append('\n');
+        }
+        return b.toString();
+    }
+
     public String toString() {
         StringBuilder b = new StringBuilder();
         List<Node> nodes = orderedNodeList();

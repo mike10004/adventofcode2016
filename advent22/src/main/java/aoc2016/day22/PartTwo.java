@@ -4,6 +4,12 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 
+/*
+my back of envelope guess: 254
+254 -> incorrect
+260 -> too high
+250 -> too low
+ */
 public class PartTwo {
 
     public static void main(String[] args) throws Exception {
