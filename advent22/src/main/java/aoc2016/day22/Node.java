@@ -89,7 +89,7 @@ public class Node {
     }
 
     public String encode() {
-        return String.format("%s%2d/%2d%s", payload ? '[' : ' ', used, used + available, payload ? ']' : ' ');
+        return String.format("%s%3d/%3d%s", payload ? '[' : ' ', used, used + available, payload ? ']' : ' ');
     }
 
     @Override

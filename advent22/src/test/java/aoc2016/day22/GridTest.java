@@ -30,7 +30,7 @@ public class GridTest {
     public void test_toString() throws Exception {
         Grid g = Play.Grids.small();
         System.out.println("==============");
-        System.out.println(g);
+        System.out.println(g.toString());
         System.out.println("==============");
     }
 

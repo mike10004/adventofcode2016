@@ -131,7 +131,8 @@ public class Play {
 
     public static void main(String[] args) throws Exception {
         Point t = new Point(0, 0);
-        Play play = new Play(Grids.small(), t.x, t.y);
+        Grid start = Grid.make(Node.parseAll(puzzleInput, 37, 0));
+        Play play = new Play(start, t.x, t.y);
         play.present(System.out);
         CharSource stdin = new CharSource() {
             @Override

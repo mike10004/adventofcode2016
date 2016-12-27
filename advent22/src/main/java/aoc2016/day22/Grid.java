@@ -13,6 +13,7 @@ import org.jgrapht.graph.SimpleDirectedGraph;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.io.PrintStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -84,7 +85,6 @@ public class Grid {
         List<Pair> pairs = new ArrayList<>(nodes.size() * 4);
         for (Node n : nodes) {
             Set<Pair> moves = graph.outgoingEdgesOf(n);
-//            List<Pair> productive = moves.stream().filter(p -> !p.isReverse(cause)).collect(Collectors.toList());
             Stream<Pair> productive = moves.stream().filter(p -> !p.isReverse(cause));
             productive.forEach(pairs::add);
         }
@@ -132,7 +132,7 @@ public class Grid {
         int y = 0;
         b.append("   ");
         for (int x = 0; x <= maxX; x++) {
-            b.append(String.format("%6d  ", x));
+            b.append(String.format("%7d  ", x));
         }
         b.append('\n');
         for (int i = 0; i < nodes.size(); i++) {
@@ -159,33 +159,29 @@ public class Grid {
         }
     }
 
+    public interface FindShortestCallback {
+        boolean dequeued(java.util.Queue<Grid> queue, Grid element);
+    }
+
     public @Nullable Grid findShortestWinningStrategy(Point target, final int maxMoves) {
-        final LoadingCache<Grid, Iterable<Grid>> childrenCache = CacheBuilder.newBuilder()
-                .build(new CacheLoader<Grid, Iterable<Grid>>() {
-                    @Override
-                    public Iterable<Grid> load(Grid key) throws Exception {
-                        List<Grid> moves = key.moves().map(key::move).collect(Collectors.toList());
-                        // System.out.format("generated list of %d moves from level %d%n", moves.size(), key.level);
-                        return moves;
-                    }
-                });
-        Iterable<Grid> bfs = new TreeTraverser<Grid>() {
-            @Override
-            public Iterable<Grid> children(Grid g) {
-                if (g.level >= maxMoves) {
-                    return Collections.emptySet();
-                }
-                return childrenCache.getUnchecked(g);
+        return findShortestWinningStrategy(target, maxMoves, alwaysTrueCallback);
+    }
+
+    private static final FindShortestCallback alwaysTrueCallback = (q, e) -> true;
+
+    public @Nullable Grid findShortestWinningStrategy(Point target, final int maxMoves, FindShortestCallback callback) {
+        final java.util.Queue<Grid> queue = new ArrayDeque<>(1024 * 1024);
+        queue.add(this);
+        while (!queue.isEmpty()) {
+            Grid node = queue.remove();
+            if (!callback.dequeued(queue, node)) {
+                break;
             }
-        }.breadthFirstTraversal(this);
-        int level = this.level;
-        for (Grid g : bfs) {
-            if (g.level > level) {
-                level = g.level;
-                System.out.format("searching at level %d%n", level);
+            if (node.isWin(target.x, target.y)) {
+                return node;
             }
-            if (g.isWin(target.x, target.y)) {
-                return g;
+            if (node.level + 1 <= maxMoves) {
+                node.moves().map(node::move).forEach(queue::add);
             }
         }
         return null;
