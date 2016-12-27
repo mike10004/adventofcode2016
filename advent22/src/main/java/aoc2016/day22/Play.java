@@ -23,6 +23,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class Play {
 
     public static final CharSource puzzleInput = Resources.asCharSource(PartOne.class.getResource("/input.txt"), StandardCharsets.UTF_8);
+    public static final int PUZZLE_INPUT_PAYLOAD_X = 37, PUZZLE_INPUT_PAYLOAD_Y = 0;
 
     private static final ImmutableSet<String> quitters = ImmutableSet.of("quit", "q", "exit");
 
@@ -99,7 +100,7 @@ public class Play {
 
         public static Grid puzzleInput() {
             try {
-                return Grid.make(Node.parseAll(puzzleInput, 37, 0));
+                return Grid.make(Node.parseAll(puzzleInput, PUZZLE_INPUT_PAYLOAD_X, PUZZLE_INPUT_PAYLOAD_Y));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -138,7 +139,7 @@ public class Play {
 
     public static void main(String[] args) throws Exception {
         Point t = new Point(0, 0);
-        Grid start = Grid.make(Node.parseAll(puzzleInput, 37, 0));
+        Grid start = Grids.puzzleInput();
         Play play = new Play(start, t.x, t.y);
         play.present(System.out);
         CharSource stdin = new CharSource() {

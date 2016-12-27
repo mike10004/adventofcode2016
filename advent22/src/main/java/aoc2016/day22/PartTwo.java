@@ -13,7 +13,7 @@ my back of envelope guess: 254
 public class PartTwo {
 
     public static void main(String[] args) throws Exception {
-        List<Node> nodes = Node.parseAll(Play.puzzleInput, 37, 0);
+        List<Node> nodes = Node.parseAll(Play.puzzleInput, Play.PUZZLE_INPUT_PAYLOAD_X, Play.PUZZLE_INPUT_PAYLOAD_Y);
         Grid grid = Grid.make(nodes);
         System.out.println(grid);
         System.out.println();
