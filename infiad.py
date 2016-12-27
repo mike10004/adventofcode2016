@@ -29,13 +29,14 @@ def main():
     while line is None or line != 'exit':
         distro = make_distribution(phrase)
         print ', '.join(["%s %s" % (c, distro[c]) for c in sorted(distro.keys(), cmp=lambda x, y: distro[y] - distro[x])])
-        print ', '.join(["%s-%s" % (c, subs[c]) for c in subs])
+        if len(subs) > 0: 
+            print ', '.join(["%s-%s" % (c, subs[c]) for c in subs])
         print 'o:', phrase
         print 't:', translate(phrase, subs)
         print 'enter substitution: ',
         line = sys.stdin.readline().rstrip("\r\n").lower()
         print
-        if line.startswith('reset'):
+        if line.startswith('-'):
             parts = line.split()
             if len(parts) == 1:
                 subs = {}
@@ -51,12 +52,12 @@ def main():
                 continue
             k, v = line.split()
             if k in alphabet and v in alphabet:
-                if k in subs and subs[k] != v:
-                    pass  #print >> sys.stderr, "already defined: %s -> %s" % (k, subs.get(k))
                 if v in subs.values():
-                    print >> sys.stderr, "already defined: %s -> %s" % (find_key(subs, v), v)
+                    print >> sys.stderr, "%s -> %s would duplicate image %s -> %s" % (k, v, find_key(subs, v), v)
                     continue
                 subs[k] = v
+            else:
+                print >> sys.stderr, "invalid input: must be alphabet characters", k, v
     return 0
 
 if __name__ == '__main__':
