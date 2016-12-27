@@ -34,11 +34,11 @@ public class PartTwo {
                 return true;
             }
         };
-//        Grid win = grid.findShortestWinningStrategy(new Point(0, 0), 256, callback);
-//        if (win == null) {
-//            System.out.println("no winning strategy found");
-//        } else {
-//            System.out.format("%d moves to win%n", win.level);
-//        }
+        Grid win = grid.findShortestWinningStrategy(new Point(0, 0), 256, callback);
+        if (win == null) {
+            System.out.println("no winning strategy found");
+        } else {
+            System.out.format("%d moves to win%n", win.level);
+        }
     }
 }
