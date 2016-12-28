@@ -1,6 +1,5 @@
 package aoc2016.day22;
 
-import aoc2016.day22.Grid.MoveListener;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.jgrapht.DirectedGraph;
@@ -12,8 +11,11 @@ import org.jgrapht.alg.interfaces.AStarAdmissibleHeuristic;
 import org.jgrapht.graph.AbstractGraph;
 
 import java.awt.*;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -22,21 +24,21 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
- * Actually did this one without programming using this logic:
+ * Actually did this one without programming, using this logic:
  *
  * <pre>
- * Empty spot starts at (35, 24).
- *
- *  +  23 moves to get the empty spot to (12, 24), left of the wall of overloaded nodes
- *  +  24 moves to get the empty spot to (12, 0)
- *  +  24 moves to get the empty spot to (36, 0)
- *  +   1 move of G data from (37, 0) to (36, 0)
- *  + 180 moves (36 5-move cycles) to get the goal data over to (0, 0)
+ * We start with a few possible moves around (35, 24).
+ *  +   1 move to create an empty spot at (34, 24)
+ *  +  27 moves to get the empty spot to (12, 19), left of the wall of overloaded nodes
+ *  +  43 moves to get the empty spot to (36, 0)
+ *  +   1 move of payload data from (37, 0) to (36, 0)
+ *  + 180 moves to get the goal data over to (0, 0), using 36 5-move cycles
  * ------
  *    252 moves total
  * </pre>
  *
- * <p>The demo below approximates it, though there are a few superfluous moves added in somewhere.</p>
+ * <p>The demo below plays out this strategy with the legality
+ * of all moves made enforced.
  */
 public class PartTwo {
 
@@ -45,81 +47,93 @@ public class PartTwo {
         Point finalTarget = new Point(0, 0);
         Grid grid = Grid.make(nodes);
         AtomicInteger moveCounter = new AtomicInteger(0);
-        grid.setMoveListener(new MoveListener() {
-            @Override
-            public void performed(Pair move) {
-                System.out.format("performed: %s -> %s%n", move.src, move.dst);
-            }
-        });
+        grid.setMoveListener(move -> System.out.format("performed: %s -> %s%n", move.src, move.dst));
         System.out.println("initial grid:");
         System.out.println(grid.illustrate());
         System.out.println("creating empty node");
         grid = grid.move(Pair.of(grid.findNodeByPosition(34, 24).get(), grid.findNodeByPosition(35, 24).get()));
+        Point emptySpot = grid.findEmptyNodeOrDie().position;
+        checkState(emptySpot.x == 34 && emptySpot.y == 24, "empty spot in unexpected location: %s", emptySpot);
         moveCounter.incrementAndGet();
         System.out.println(grid.illustrate());
         System.out.println();
-        Graph<GridVertex, Movement> g = new GridGraph();
-        AStarShortestPath<GridVertex, Movement> algo = new AStarShortestPath<>(g);
-        AStarAdmissibleHeuristic<GridVertex> taxicabMetric = new AStarAdmissibleHeuristic<GridVertex>() {
-            @Override
-            public double getCostEstimate(GridVertex sourceVertex, GridVertex targetVertex) {
-                return Math.abs(sourceVertex.emptyNode.x - targetVertex.emptyNode.x)
-                        + Math.abs(sourceVertex.emptyNode.y - targetVertex.emptyNode.y);
-            }
-        };
-        GridVertex start = new KnownGridVertex(new Point(34, 24), grid);
-        GridVertex target = new NoNextMoveGridVertex(new Point(36, 0));
-        GraphPath<GridVertex, Movement> path = algo.getShortestPath(start, target, taxicabMetric);
-        System.out.format("%s moves to get empty spot next to payload: %s%n", path == null ? "N/A" : path.getLength(), path);
+        Point waypoint = new Point(12, 19);
+        grid = moveEmptySpotAlongShortestPath(grid, waypoint, moveCounter);
+        emptySpot = grid.findEmptyNodeOrDie().position;
+        System.out.format("empty spot currently at %s%n", emptySpot);
+        Point nextToPayload = new Point(36, 0);
+        grid = moveEmptySpotAlongShortestPath(grid, nextToPayload, moveCounter);
+
         try {
-            if (path != null) {
-                System.out.println("moving empty spot next to payload");
-                Point emptySpot = null;
-                for (Pair move : path.getEdgeList().stream().map(m -> m.pair).collect(Collectors.toList())) {
-                    grid = grid.move(move);
+            int dx = -1, dy = 0;
+            Queue<Pair> queue = new ArrayDeque<>();
+            System.out.format("performing data move cycles until empty spot is at final target (%d, %d)%n", finalTarget.x, finalTarget.y);
+            int numCycleMoves = 0;
+            while (moveCounter.get() < DataMoveCycle.CYCLE_MOVES_LIMIT) {
+                if (queue.isEmpty()) {
+                    Pair movePayloadOver = grid.moves()
+                            .filter(p -> p.getDirectionX() == dx && p.getDirectionY() == dy).findFirst()
+                            .orElseThrow(() -> new IllegalStateException("no moves in correct direction"));
+                    System.out.println("moving payload over one");
+                    grid = grid.move(movePayloadOver);
+                    numCycleMoves++;
                     moveCounter.incrementAndGet();
-                    emptySpot = move.src.position;
-                }
-                checkState(emptySpot != null, "empty spot never set");
-                System.out.println(grid.illustrate());
-                int dx = -1, dy = 0;
-                Queue<Pair> queue = new ArrayDeque<>();
-                System.out.format("performing data move cycles until empty spot is at final target (%d, %d)%n", finalTarget.x, finalTarget.y);
-                while (true) {
-                    if (queue.isEmpty()) {
-                        Pair movePayloadOver = grid.moves().filter(p -> p.getDirectionX() == dx && p.getDirectionY() == dy).findFirst().orElseThrow(() -> new IllegalStateException("no moves in correct direction"));
-                        System.out.println("moving payload over one");
-                        grid = grid.move(movePayloadOver);
-                        moveCounter.incrementAndGet();
-                        if (grid.isWin(finalTarget.x, finalTarget.y)) {
-                            break;
-                        }
-                        System.out.println(grid.illustrate());
-                        queue.addAll(new DataMoveCycle(grid, dx, dy).getCycle());
-                        System.out.println("performing 5-move cycle");
-                    }
-                    Pair move = queue.remove();
-                    grid = grid.move(move);
-                    moveCounter.incrementAndGet();
-//                    System.out.println(grid.illustrate());
-                    if (moveCounter.get() > 1000) {
-                        System.out.format("BREAKING BEFORE WIN");
+                    if (grid.isWin(finalTarget.x, finalTarget.y)) {
                         break;
                     }
+//                    System.out.println(grid.illustrate());
+                    queue.addAll(new DataMoveCycle(grid, dx, dy).getCycle());
+                    System.out.println("performing 4-move cycle");
                 }
-                System.out.println(grid.illustrate());
-                boolean won = grid.isWin(finalTarget.x, finalTarget.y);
-                System.out.format("finally a win? %s%n", won);
-                System.out.println(moveCounter.get() + " moves");
+                Pair move = queue.remove();
+                grid = grid.move(move);
+                moveCounter.incrementAndGet();
+                numCycleMoves++;
+            }
+            System.out.format("%d cycle moves performed%n", numCycleMoves);
+            System.out.println(grid.illustrate());
+            boolean won = grid.isWin(finalTarget.x, finalTarget.y);
+            System.out.format("finally a win? %s%n", won);
+            System.out.println(moveCounter.get() + " moves");
+            if (!won) {
+                System.exit(2);
             }
         } catch (RuntimeException e) {
-            System.out.println(e);
+            System.out.println(e.toString());
             System.out.format("at %s%n", e.getStackTrace()[0]);
             System.exit(2);
         }
     }
 
+    private static Grid moveEmptySpotAlongShortestPath(Grid grid, Point emptySpotDestination, AtomicInteger moveCounter) {
+        Graph<GridVertex, Movement> g = new GridGraph();
+        AStarShortestPath<GridVertex, Movement> algo = new AStarShortestPath<>(g);
+        AStarAdmissibleHeuristic<GridVertex> taxicabMetric = (sourceVertex, targetVertex) -> {
+            return Math.abs(sourceVertex.emptyNode.x - targetVertex.emptyNode.x)
+                    + Math.abs(sourceVertex.emptyNode.y - targetVertex.emptyNode.y);
+        };
+        Point emptySpot = grid.findEmptyNodeOrDie().position;
+        GridVertex start = new KnownGridVertex(emptySpot, grid);
+        GridVertex target = new NoNextMoveGridVertex(emptySpotDestination);
+        GraphPath<GridVertex, Movement> path = algo.getShortestPath(start, target, taxicabMetric);
+        System.out.format("%s moves to get empty spot to %s: %s%n", path == null ? "N/A" : path.getLength(), emptySpotDestination, path);
+        checkState(path != null, "no path found to move empty spot from %s to %s", emptySpot, emptySpotDestination);
+        System.out.format("moving empty spot to %s in %d moves%n", emptySpotDestination, path.getLength());
+        List<Pair> pathMoves = path.getEdgeList().stream().map(m -> m.pair).collect(Collectors.toList());
+        for (Pair move : pathMoves) {
+            grid = grid.move(move);
+            moveCounter.incrementAndGet();
+            emptySpot = move.src.position;
+        }
+        checkState(grid.findEmptyNodeOrDie().position.equals(emptySpot), "movements left unexpected empty spot in grid");
+        checkState(emptySpot.equals(emptySpotDestination), "ended with empty spot %s not in expected location %s", emptySpot, emptySpotDestination);
+        System.out.println(grid.trace(pathMoves));
+        return grid;
+    }
+
     private static class DataMoveCycle {
+
+        private static final int CYCLE_MOVES_LIMIT = 5000;
 
         private final int directionX, directionY;
         private Point emptySpot;
@@ -141,23 +155,27 @@ public class PartTwo {
         public List<Pair> getCycle() {
             if (moves.isEmpty()) {
                 System.out.println("calculating cycle of next moves");
-                Pair moveDown = current.moves().filter(p -> !p.isParallel(directionX, directionY)).findFirst().orElseThrow(() -> new IllegalStateException("no moves perpendicular to direction " + directionX + ", " + directionY));
-                perform(moveDown);
+                Pair movePerpendicular = current.moves()
+                        .filter(p -> !p.isParallel(directionX, directionY)).findFirst()
+                        .orElseThrow(() -> new IllegalStateException("no moves perpendicular to direction " + directionX + ", " + directionY));
+                perform(movePerpendicular);
                 Point emptySpotTarget = new Point(emptySpot.x + (directionX * 2), emptySpot.y + (directionY * 2));
                 while (!emptySpotTarget.equals(emptySpot)) {
-                    Pair moveParallel = current.moves().filter(p -> p.isParallel(directionX, directionY) && p.isOppositeDirection(directionX, directionY)).findFirst().orElseThrow(() -> new IllegalStateException("no parallel moves"));
+                    Pair moveParallel = current.moves()
+                            .filter(p -> p.isParallel(directionX, directionY) && p.isOppositeDirection(directionX, directionY))
+                            .findFirst().orElseThrow(() -> new IllegalStateException("no parallel moves"));
                     perform(moveParallel);
                 }
-                Pair moveUp = current.moves().filter(p -> !p.isParallel(directionX, directionY) && (p.src.x == initialEmptySpot.x || p.src.y == initialEmptySpot.y)).findFirst().orElseThrow(() -> new IllegalStateException("no moves back to beside payload"));
-                perform(moveUp);
+                Pair movePerpendicularReverse = current.moves().filter(p -> !p.isParallel(directionX, directionY) && (p.src.x == initialEmptySpot.x || p.src.y == initialEmptySpot.y)).findFirst().orElseThrow(() -> new IllegalStateException("no moves back to beside payload"));
+                perform(movePerpendicularReverse);
                 moves = ImmutableList.copyOf(moves);
-                System.out.println("calculated cycle of next moves: " + moves);
+                System.out.format("calculated cycle of next moves: %s%n", moves);
             }
             return moves;
         }
 
         private void perform(Pair move) {
-            System.out.format("calculated: %s%n", move);
+//            System.out.format("calculated: %s%n", move);
             current = current.move(move, null);
             emptySpot = move.src.position;
             moves.add(move);
@@ -191,7 +209,7 @@ public class PartTwo {
         private final Grid grid;
         private Set<Movement> movements;
 
-        private KnownGridVertex(Point emptyNode, Grid grid) {
+        public KnownGridVertex(Point emptyNode, Grid grid) {
             super(emptyNode);
             this.grid = grid;
         }
@@ -250,7 +268,7 @@ public class PartTwo {
             this.emptySpotFrom = emptySpotFrom;
             emptySpotTo = pair.src.position;
             this.sourceVertex = sourceVertex;
-            this.targetVertex = new KnownGridVertex(emptySpotTo, sourceVertex.grid.move(pair));
+            this.targetVertex = new KnownGridVertex(emptySpotTo, sourceVertex.grid.move(pair, null));
         }
 
         @Override
@@ -272,6 +290,9 @@ public class PartTwo {
         }
     }
 
+    /**
+     * Graph implementation that only implements the methods necessary for {@link AStarShortestPath} to run.
+     */
     private static class GridGraph extends AbstractGraph<GridVertex, Movement> implements DirectedGraph<GridVertex, Movement> {
 
         @Override

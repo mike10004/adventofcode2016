@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -76,7 +77,19 @@ public class Grid {
     }
 
     public Optional<Node> findNodeByPosition(int x, int y) {
-        return orderedNodeList().stream().filter(n -> n.isAtPosition(x, y)).findFirst();
+        return findNode(n -> n.isAtPosition(x, y));
+    }
+
+    public Optional<Node> findNode(Predicate<? super Node> predicate) {
+        return orderedNodeList().stream().filter(predicate).findFirst();
+    }
+
+    public Optional<Node> findEmptyNode() {
+        return findNode(n -> n.used == 0);
+    }
+
+    public Node findEmptyNodeOrDie() {
+        return findEmptyNode().orElseThrow(() -> new IllegalStateException("no empty node in grid"));
     }
 
     public static Grid make(List<Node> nodes) {
@@ -166,13 +179,17 @@ public class Grid {
 
     private static final float WALL_THRESHOLD = 0.90f;
 
-    static char represent(Node n, Stream<Pair> moves) {
+    static char represent(Node n, Stream<Pair> moves, List<Pair> path) {
+        if (!path.isEmpty() && path.stream().anyMatch(p -> p.src.isSameLocation(n))) {
+            return '*';
+        }
         if (n.used == 0) {
             return '_';
         }
         if (n.payload) {
             return 'G';
-        } else if (n.proportionUsed() > WALL_THRESHOLD) {
+        }
+        if (n.proportionUsed() > WALL_THRESHOLD) {
             return '#';
         } else {
             if (moves.count() > 0) {
@@ -189,6 +206,14 @@ public class Grid {
     }
 
     public String illustrate(Collection<Pair> moves) {
+        return illustrate(moves, Collections.emptyList());
+    }
+
+    public String trace(List<Pair> path) {
+        return illustrate(Collections.emptySet(), path);
+    }
+
+    private String illustrate(Collection<Pair> moves, List<Pair> path) {
         List<Node> nodes = orderedNodeList();
         int maxX = Grid.findMaxX(nodes.stream());
         StringBuilder b = new StringBuilder(256);
@@ -205,7 +230,7 @@ public class Grid {
                 y++;
             }
             Node n = nodes.get(i);
-            b.append(represent(n, mf.apply(n)));
+            b.append(represent(n, mf.apply(n), path));
             b.append(' ');
         }
         return createXAxisLabels(maxX, "   ") + b.toString();
